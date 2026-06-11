@@ -1,0 +1,8 @@
+.cache
+.direnv
+
+bin
+lib
+out
+
+compile_commands.json
