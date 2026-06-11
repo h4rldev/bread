@@ -6,4 +6,5 @@
 bread_surface_t bread_window_get_surface(bread_window_t *window);
 bread_backend_type_t bread_window_get_backend_type(bread_window_t *window);
 
+#include <bread/types.h>
 #endif
