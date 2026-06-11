@@ -1,4 +1,3 @@
-#include "bread/types.h"
 #include <bread/x11/x11.h>
 
 #if BREAD_X11
@@ -12,8 +11,10 @@
 
 #include <bread/backend.h>
 #include <bread/surface.h>
+#include <bread/types.h>
 #include <bread/window.h>
-#include <bread/x11/input.h>
+#include <bread/x11/x11_input.h>
+#include <bread/x11/x11_output.h>
 
 #include <xcb/xcb.h>
 #include <xcb/xcb_icccm.h>
@@ -94,6 +95,7 @@ static void x11_init(bread_window_t *window) {
   xcb_flush(state->connection);
 
   state->running = true;
+  bread_x11_query_refresh_rate(state);
 }
 
 static void x11_poll_events(bread_window_t *window) {
@@ -249,5 +251,4 @@ const bread_backend_vtable_t bread_x11_backend = {
     .get_surface = x11_get_surface,
     .backend_type = BREAD_BACKEND_X11,
 };
-
 #endif // !BREAD_X11

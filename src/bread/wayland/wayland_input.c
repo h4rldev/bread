@@ -11,6 +11,7 @@
 
 #include <bread/event.h>
 #include <bread/input.h>
+#include <bread/wayland/wayland_input.h>
 
 static void keyboard_keymap(void *data, wl_keyboard_t *keyboard, u32 format,
                             i32 fd, u32 size) {
@@ -228,5 +229,4 @@ void bread_wayland_seat_cleanup(wl_state_t *state) {
   xkb_keymap_unref(state->xkb_keymap);
   xkb_context_unref(state->xkb_context);
 }
-
 #endif // !BREAD_WAYLAND

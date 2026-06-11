@@ -135,7 +135,7 @@ static const bread_key_t evdev_to_bread[] = {
 
 #define EVDEV_TO_BREAD_MAX 128
 
-bread_key_t bread_evdev_to_bread(u32 evdev_key) {
+bread_key_t bread_evdev_to_key(u32 evdev_key) {
   if (evdev_key < EVDEV_TO_BREAD_MAX)
     return evdev_to_bread[evdev_key];
   return BREAD_KEY_UNKNOWN;

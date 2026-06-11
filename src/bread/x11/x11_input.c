@@ -9,6 +9,7 @@
 #include <bread/event.h>
 #include <bread/input.h>
 #include <bread/window.h>
+#include <bread/x11/x11_input.h>
 
 b32 bread_x11_xkb_init(x11_state_t *state) {
   state->xkb_context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
@@ -128,5 +129,4 @@ void bread_x11_handle_motion(x11_state_t *state,
   state->input.mouse_x = (f64)event->event_x;
   state->input.mouse_y = (f64)event->event_y;
 }
-
 #endif // !BREAD_X11

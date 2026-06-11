@@ -22,6 +22,7 @@ typedef struct {
 
   u16 width;
   u16 height;
+  u32 refresh_mhz;
   b32 running;
 
   xcb_atom_t wm_protocols;

@@ -22,6 +22,7 @@ typedef struct wl_seat wl_seat_t;
 typedef struct wl_keyboard wl_keyboard_t;
 typedef struct wl_pointer wl_pointer_t;
 typedef struct wl_array wl_array_t;
+typedef struct wl_output wl_output_t;
 
 typedef struct xkb_context xkb_context_t;
 typedef struct xkb_keymap xkb_keymap_t;
@@ -35,6 +36,7 @@ typedef struct wl_registry_listener wl_registry_listener_t;
 typedef struct wl_keyboard_listener wl_keyboard_listener_t;
 typedef struct wl_pointer_listener wl_pointer_listener_t;
 typedef struct wl_seat_listener wl_seat_listener_t;
+typedef struct wl_output_listener wl_output_listener_t;
 
 typedef struct {
   bread_window_t *window;
@@ -59,6 +61,8 @@ typedef struct {
 
   u16 width;
   u16 height;
+  u32 refresh_mhz;
+  i32 output_scale;
   b32 running;
 
   bread_input_state_t input;

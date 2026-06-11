@@ -21,12 +21,8 @@
 
         buildInputs = with pkgs; [
           wayland-scanner
-          vulkan-headers
-          vulkan-loader
           pkg-config
-          shader-slang
           gcc
-          cglm
           libx11
           libxcb
           libxcb-wm
@@ -36,18 +32,26 @@
           htils.packages.${system}.htils
         ];
 
+        nativeBuildInputs = with pkgs; [
+          mold
+          glibc
+        ];
+
         packages = with pkgs; [
           nixd
-          alejandra
           bear
           just
           clang-tools
-          vulkan-tools
+          nix-index
         ];
 
         shellHook = ''
           mkdir -p include/wayland
           mkdir -p src/wayland
+
+          export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:${pkgs.gcc.cc.lib}/lib"
+          export NIX_LDFLAGS="-rpath ${htils.packages.${system}.htils}/lib $NIX_LDFLAGS"
+
 
           [[ -f ./include/wayland/xdg-shell-client-protocol.h ]] || wayland-scanner client-header ${pkgs.wayland-protocols}/share/wayland-protocols/stable/xdg-shell/xdg-shell.xml ./include/wayland/xdg-shell-client-protocol.h
           [[ -f ./src/wayland/xdg-shell-client-protocol.c ]] || wayland-scanner private-code ${pkgs.wayland-protocols}/share/wayland-protocols/stable/xdg-shell/xdg-shell.xml ./src/wayland/xdg-shell-client-protocol.c

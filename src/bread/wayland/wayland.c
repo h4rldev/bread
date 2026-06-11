@@ -11,8 +11,10 @@
 #include <bread/event.h>
 #include <bread/input.h>
 #include <bread/surface.h>
-#include <bread/wayland/input.h>
 #include <bread/window.h>
+
+#include <bread/wayland/wayland_input.h>
+#include <bread/wayland/wayland_output.h>
 
 #include <wayland-client-protocol.h>
 #include <wayland-client.h>
@@ -78,6 +80,9 @@ static void global_registry_handler(void *data, wl_registry_t *registry, u32 id,
   else if (strcmp(interface, wl_seat_interface.name) == 0)
     bread_wayland_seat_bind(state, registry, id, version);
 
+  else if (strcmp(interface, wl_output_interface.name) == 0)
+    bread_wayland_output_bind(state, registry, id, version);
+
   else if (strcmp(interface, xdg_wm_base_interface.name) == 0) {
     state->xdg_wm_base =
         wl_registry_bind(registry, id, &xdg_wm_base_interface, 1);
@@ -89,6 +94,9 @@ static void global_registry_remover(void *data, wl_registry_t *registry,
                                     u32 id) {}
 
 static void wl_state_cleanup(wl_state_t *state) {
+  if (state->seat)
+    bread_wayland_seat_cleanup(state);
+
   if (state->xdg_toplevel)
     xdg_toplevel_destroy(state->xdg_toplevel);
 
@@ -112,9 +120,6 @@ static void wl_state_cleanup(wl_state_t *state) {
 
   if (state->display)
     wl_display_disconnect(state->display);
-
-  if (state->seat)
-    bread_wayland_seat_cleanup(state);
 }
 
 static const wl_registry_listener_t registry_listener = {
@@ -124,9 +129,8 @@ static const wl_registry_listener_t registry_listener = {
 
 static void wayland_init(bread_window_t *window) {
   arena_t *arena = window->arena;
-
   wl_state_t *state = arena_alloc(arena, wl_state_t, 1);
-  window->backend = state;
+  state->window = window;
 
   state->display = wl_display_connect(NULL);
   if (!state->display) {
@@ -163,8 +167,8 @@ static void wayland_init(bread_window_t *window) {
   wl_surface_commit(state->wl_surface);
   wl_display_roundtrip(state->display);
 
-  state->window = window;
   state->running = true;
+  window->backend = state;
 }
 
 static void wayland_poll_events(bread_window_t *window) {
@@ -209,6 +213,4 @@ const bread_backend_vtable_t bread_wayland_backend = {
     .get_surface = wayland_get_surface,
     .backend_type = BREAD_BACKEND_WAYLAND,
 };
-
-#undef BREAD_INTERNAL
 #endif // BREAD_WAYLAND
