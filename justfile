@@ -234,7 +234,6 @@ assemble-bread platform="wayland" target="debug" static="dynamic" force="dont_fo
 compile-test platform="wayland" force="dont_force" threads=num_cpus():
     #!/usr/bin/env bash
     shopt -s globstar
-    set -x
 
     [[ -d {{ test_out }} ]] || mkdir -p {{ test_out }}
     [[ -d {{ lib }} ]] || just debug
@@ -300,7 +299,6 @@ compile-test platform="wayland" force="dont_force" threads=num_cpus():
 link-test platform="wayland" force="dont_force":
     #!/usr/bin/env bash
     shopt -s globstar
-    set -x
 
     [[ -d {{ bread_out }} ]] || exit 1
     [[ -d {{ bin }} ]] || mkdir -p {{ bin }}

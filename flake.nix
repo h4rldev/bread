@@ -16,6 +16,169 @@
     flake-utils.lib.eachDefaultSystem (system: let
       pkgs = import nixpkgs {inherit system;};
     in {
+      packages.bread-wayland-release = pkgs.stdenv.mkDerivation {
+        pname = "bread-wayland";
+        version = "0.1.0";
+
+        src = ./.;
+
+        nativeBuildInputs = [
+          pkgs.just
+          pkgs.gcc
+          pkgs.mold
+          pkgs.wayland-scanner
+          pkgs.wayland-protocols
+          pkgs.libxkbcommon
+          pkgs.wayland
+          htils.packages.${system}.htils
+        ];
+
+        buildPhase = ''
+          runHook preBuild
+
+          mkdir -p ./include/wayland
+          wayland-scanner client-header ${pkgs.wayland-protocols}/share/wayland-protocols/stable/xdg-shell/xdg-shell.xml ./include/wayland/xdg-shell-client-protocol.h
+
+          mkdir -p ./src/wayland
+          wayland-scanner private-code ${pkgs.wayland-protocols}/share/wayland-protocols/stable/xdg-shell/xdg-shell.xml ./src/wayland/xdg-shell-client-protocol.c
+
+          sed -i 's|#!/usr/bin/env bash|#!${pkgs.bash}/bin/bash|' justfile
+          just release
+
+          runHook postBuild
+        '';
+
+        installPhase = ''
+          runHook preInstall
+
+          mkdir -p $out/lib
+          mkdir -p $out/include/bread
+
+          cp lib/libbread-wayland-release.so $out/lib
+          cp -r include/bread/* $out/include/bread
+
+          runHook postInstall
+        '';
+      };
+
+      packages.bread-wayland-debug = pkgs.stdenv.mkDerivation {
+        pname = "bread-wayland-debug";
+        version = "0.1.0";
+
+        src = ./.;
+
+        nativeBuildInputs = [
+          pkgs.just
+          pkgs.gcc
+          pkgs.wayland-scanner
+          pkgs.wayland-protocols
+          pkgs.libxkbcommon
+          pkgs.wayland
+          htils.packages.${system}.htils
+        ];
+
+        buildPhase = ''
+          runHook preBuild
+
+          mkdir -p ./include/wayland
+          mkdir -p ./src/wayland
+
+          wayland-scanner client-header ${pkgs.wayland-protocols}/share/wayland-protocols/stable/xdg-shell/xdg-shell.xml ./include/wayland/xdg-shell-client-protocol.h
+          wayland-scanner private-code ${pkgs.wayland-protocols}/share/wayland-protocols/stable/xdg-shell/xdg-shell.xml ./src/wayland/xdg-shell-client-protocol.c
+
+          sed -i 's|#!/usr/bin/env bash|#!${pkgs.bash}/bin/bash|' justfile
+          just debug
+
+          runHook postBuild
+        '';
+
+        installPhase = ''
+          runHook preInstall
+
+          mkdir -p $out/lib
+          mkdir -p $out/include/bread
+
+          cp lib/libbread-wayland-debug.a $out/lib
+          cp -r include/bread/* $out/include/bread
+
+          runHook postInstall
+        '';
+      };
+
+      packages.bread-x11-release = pkgs.stdenv.mkDerivation {
+        pname = "bread-x11";
+        version = "0.1.0";
+
+        src = ./.;
+
+        nativeBuildInputs = [
+          pkgs.just
+          pkgs.gcc
+          pkgs.libxcb
+          pkgs.libxcb-wm
+          pkgs.libxkbcommon
+          htils.packages.${system}.htils
+        ];
+
+        buildPhase = ''
+          runHook preBuild
+
+          sed -i 's|#!/usr/bin/env bash|#!${pkgs.bash}/bin/bash|' justfile
+          just release x11
+
+          runHook postBuild
+        '';
+
+        installPhase = ''
+          runHook preInstall
+
+          mkdir -p $out/lib
+          mkdir -p $out/include/bread
+
+          cp lib/libbread-x11-release.so $out/lib
+          cp -r include/bread/* $out/include/bread
+
+          runHook postInstall
+        '';
+      };
+
+      packages.bread-x11-debug = pkgs.stdenv.mkDerivation {
+        pname = "bread-x11-debug";
+        version = "0.1.0";
+
+        src = ./.;
+
+        nativeBuildInputs = [
+          pkgs.just
+          pkgs.gcc
+          pkgs.libxcb
+          pkgs.libxcb-wm
+          pkgs.libxkbcommon
+          htils.packages.${system}.htils
+        ];
+
+        buildPhase = ''
+          runHook preBuild
+
+          sed -i 's|#!/usr/bin/env bash|#!${pkgs.bash}/bin/bash|' justfile
+          just debug x11
+
+          runHook postBuild
+        '';
+
+        installPhase = ''
+          runHook preInstall
+
+          mkdir -p $out/lib
+          mkdir -p $out/include/bread
+
+          cp lib/libbread-x11-debug.a $out/lib
+          cp -r include/bread/* $out/include/bread
+
+          runHook postInstall
+        '';
+      };
+
       devShells.default = pkgs.mkShell {
         name = "bread-dev";
 

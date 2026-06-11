@@ -4,6 +4,7 @@
 bin
 lib
 out
+result
 
 compile_commands.json
 src/wayland/xdg-shell-client-protocol.c
