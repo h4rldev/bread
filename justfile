@@ -26,13 +26,13 @@ link_flags := '-lhtils -Llib'
 
 ## Shared flags
 
-shared_flags_debug := '-ggdb -g -Og -fsanitize=address,undefined,leak -fno-sanitize-recover=all -fno-omit-frame-pointer -fno-optimize-sibling-calls -fsanitize-address-use-after-scope -fno-common'
+shared_flags_debug := '-ggdb -g -Og -fsanitize=address,undefined,leak -fno-sanitize-recover=all -fno-omit-frame-pointer -fno-optimize-sibling-calls -fsanitize-address-use-after-scope -fno-common -static-libasan'
 shared_flags_release := '-O2 -std=gnu11'
 
 ## Link flags
 
 wayland_link_flags := shared_flags_debug + ' -lwayland-client -lxkbcommon -lbread-wayland-debug ' + link_flags
-x11_link_flags := shared_flags_debug + ' -lxkbcommon -lxkbcommon-x11 -lxcb -lbread-x11-debug ' + link_flags
+x11_link_flags := shared_flags_debug + ' -lxkbcommon -lxkbcommon-x11 -lxcb -lxcb-randr -lbread-x11-debug ' + link_flags
 
 ## Static link flags
 
@@ -64,6 +64,7 @@ default:
 clean:
     ! [[ -d {{ out }} ]] || rm -fr {{ out }}
     ! [[ -d {{ bin }} ]] || rm -fr {{ bin }}
+    ! [[ -d {{ lib }} ]] || rm -fr {{ lib }}
 
 bear platform="wayland":
     bear -- just compile-bread {{ platform }} debug force

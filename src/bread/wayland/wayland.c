@@ -10,7 +10,6 @@
 #include <bread/backend.h>
 #include <bread/event.h>
 #include <bread/input.h>
-#include <bread/surface.h>
 #include <bread/window.h>
 
 #include <bread/wayland/wayland_input.h>

@@ -10,7 +10,6 @@
 #include <htils/string.h>
 
 #include <bread/backend.h>
-#include <bread/surface.h>
 #include <bread/types.h>
 #include <bread/window.h>
 #include <bread/x11/x11_input.h>
@@ -44,6 +43,7 @@ static void x11_init(bread_window_t *window) {
   arena_t *arena = window->arena;
   x11_state_t *state = arena_alloc(arena, x11_state_t, 1);
   window->backend = state;
+  state->window = window;
 
   int screen_num = 0;
   state->connection = xcb_connect(NULL, &screen_num);
