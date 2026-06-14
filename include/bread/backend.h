@@ -4,7 +4,6 @@
 #include <htils/basictypes.h>
 #include <htils/string.h>
 
-#include <bread/surface.h>
 #include <bread/types.h>
 #include <bread/window.h>
 
