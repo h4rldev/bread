@@ -13,7 +13,6 @@
 #include <bread/types.h>
 #include <bread/window.h>
 #include <bread/x11/x11_input.h>
-#include <bread/x11/x11_output.h>
 
 #include <xcb/xcb.h>
 #include <xcb/xcb_icccm.h>
@@ -95,7 +94,6 @@ static void x11_init(bread_window_t *window) {
   xcb_flush(state->connection);
 
   state->running = true;
-  bread_x11_query_refresh_rate(state);
 }
 
 static void x11_poll_events(bread_window_t *window) {

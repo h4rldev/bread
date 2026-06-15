@@ -22,9 +22,6 @@ int main(void) {
   bread_window_set_event_callback(&window, bread_event_callback, NULL);
   bread_window_init(&window);
 
-  u16 refresh_rate = bread_window_get_refresh_rate(&window);
-  printf("Refresh rate: %d Hz\n", refresh_rate);
-
   while (bread_window_should_close(&window) == false) {
     bread_window_poll(&window);
   }

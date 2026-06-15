@@ -13,7 +13,6 @@
 #include <bread/window.h>
 
 #include <bread/wayland/wayland_input.h>
-#include <bread/wayland/wayland_output.h>
 
 #include <wayland-client-protocol.h>
 #include <wayland-client.h>
@@ -78,9 +77,6 @@ static void global_registry_handler(void *data, wl_registry_t *registry, u32 id,
 
   else if (strcmp(interface, wl_seat_interface.name) == 0)
     bread_wayland_seat_bind(state, registry, id, version);
-
-  else if (strcmp(interface, wl_output_interface.name) == 0)
-    bread_wayland_output_bind(state, registry, id, version);
 
   else if (strcmp(interface, xdg_wm_base_interface.name) == 0) {
     state->xdg_wm_base =

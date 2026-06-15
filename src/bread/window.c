@@ -44,17 +44,3 @@ bread_surface_t bread_window_get_surface(bread_window_t *window) {
 bread_backend_type_t bread_get_backend_type(void) {
   return get_backend_vtable()->backend_type;
 }
-
-u16 bread_window_get_refresh_rate(bread_window_t *window) {
-#if BREAD_WAYLAND
-  wl_state_t *state = window->backend;
-  if (state->refresh_mhz == 0)
-    return 0;
-  return (u16)(state->refresh_mhz / 1000);
-#elif BREAD_X11
-  x11_state_t *state = window->backend;
-  if (state->refresh_mhz == 0)
-    return 0;
-  return (u16)(state->refresh_mhz / 1000);
-#endif
-}
