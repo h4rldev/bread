@@ -111,6 +111,9 @@ static void x11_init(bread_window_t *window) {
 
   bread_log_debug("Mapping window");
   xcb_map_window(state->connection, state->xcb_window);
+  bread_log_debug("Reapplying mask");
+  xcb_change_window_attributes(state->connection, state->xcb_window, value_mask,
+                               value_list);
   bread_log_debug("Flushing X11 connection");
   xcb_flush(state->connection);
 
