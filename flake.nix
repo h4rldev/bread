@@ -36,11 +36,13 @@
         buildPhase = ''
           runHook preBuild
 
-          mkdir -p ./include/wayland
-          wayland-scanner client-header ${pkgs.wayland-protocols}/share/wayland-protocols/stable/xdg-shell/xdg-shell.xml ./include/wayland/xdg-shell-client-protocol.h
-
           mkdir -p ./src/wayland
+          mkdir -p ./include/wayland
+
+          wayland-scanner client-header ${pkgs.wayland-protocols}/share/wayland-protocols/stable/xdg-shell/xdg-shell.xml ./include/wayland/xdg-shell-client-protocol.h
           wayland-scanner private-code ${pkgs.wayland-protocols}/share/wayland-protocols/stable/xdg-shell/xdg-shell.xml ./src/wayland/xdg-shell-client-protocol.c
+          wayland-scanner client-header ${pkgs.wayland-protocols}/share/wayland-protocols/unstable/xdg-decoration/xdg-decoration-unstable-v1.xml ./include/wayland/xdg-decoration-client-protocol.h
+          wayland-scanner private-code ${pkgs.wayland-protocols}/share/wayland-protocols/unstable/xdg-decoration/xdg-decoration-unstable-v1.xml ./src/wayland/xdg-decoration-client-protocol.c
 
           sed -i 's|#!/usr/bin/env bash|#!${pkgs.bash}/bin/bash|' justfile
           just release
@@ -85,6 +87,8 @@
 
           wayland-scanner client-header ${pkgs.wayland-protocols}/share/wayland-protocols/stable/xdg-shell/xdg-shell.xml ./include/wayland/xdg-shell-client-protocol.h
           wayland-scanner private-code ${pkgs.wayland-protocols}/share/wayland-protocols/stable/xdg-shell/xdg-shell.xml ./src/wayland/xdg-shell-client-protocol.c
+          wayland-scanner client-header ${pkgs.wayland-protocols}/share/wayland-protocols/unstable/xdg-decoration/xdg-decoration-unstable-v1.xml ./include/wayland/xdg-decoration-client-protocol.h
+          wayland-scanner private-code ${pkgs.wayland-protocols}/share/wayland-protocols/unstable/xdg-decoration/xdg-decoration-unstable-v1.xml ./src/wayland/xdg-decoration-client-protocol.c
 
           sed -i 's|#!/usr/bin/env bash|#!${pkgs.bash}/bin/bash|' justfile
           just debug
@@ -219,6 +223,8 @@
 
           [[ -f ./include/wayland/xdg-shell-client-protocol.h ]] || wayland-scanner client-header ${pkgs.wayland-protocols}/share/wayland-protocols/stable/xdg-shell/xdg-shell.xml ./include/wayland/xdg-shell-client-protocol.h
           [[ -f ./src/wayland/xdg-shell-client-protocol.c ]] || wayland-scanner private-code ${pkgs.wayland-protocols}/share/wayland-protocols/stable/xdg-shell/xdg-shell.xml ./src/wayland/xdg-shell-client-protocol.c
+          [[ -f ./include/wayland/xdg-decoration-client-protocol.h ]] || wayland-scanner client-header ${pkgs.wayland-protocols}/share/wayland-protocols/unstable/xdg-decoration/xdg-decoration-unstable-v1.xml ./include/wayland/xdg-decoration-client-protocol.h
+          [[ -f ./src/wayland/xdg-decoration-client-protocol.c ]] || wayland-scanner private-code ${pkgs.wayland-protocols}/share/wayland-protocols/unstable/xdg-decoration/xdg-decoration-unstable-v1.xml ./src/wayland/xdg-decoration-client-protocol.c
         '';
       };
     });

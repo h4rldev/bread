@@ -119,6 +119,7 @@ static void x11_init(bread_window_t *window) {
   state->wm_protocols = intern_atom(state->connection, "WM_PROTOCOLS");
   bread_log_debug("Setting intern WM_DELETE_WINDOW");
   state->wm_delete_window = intern_atom(state->connection, "WM_DELETE_WINDOW");
+  bread_log_debug("WM_DELETE_WINDOW: %d", state->wm_delete_window);
 
   bread_log_debug("Setting WM_PROTOCOLS");
   xcb_change_property(state->connection, XCB_PROP_MODE_REPLACE,

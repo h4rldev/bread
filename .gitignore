@@ -7,5 +7,5 @@ out
 result
 
 compile_commands.json
-src/wayland/xdg-shell-client-protocol.c
-include/wayland/xdg-shell-client-protocol.h
+src/wayland/
+include/wayland/

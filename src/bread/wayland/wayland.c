@@ -18,6 +18,8 @@
 
 #include <wayland-client-protocol.h>
 #include <wayland-client.h>
+
+#include <wayland/xdg-decoration-client-protocol.h>
 #include <wayland/xdg-shell-client-protocol.h>
 
 static void xdg_wm_base_ping(void *data, xdg_wm_base_t *wm, u32 serial) {
@@ -99,6 +101,12 @@ static void global_registry_handler(void *data, wl_registry_t *registry, u32 id,
     bread_wayland_seat_bind(state, registry, id, version);
   }
 
+  else if (strcmp(interface, zxdg_decoration_manager_v1_interface.name) == 0) {
+    bread_log_debug("Binding SSD manager");
+    state->decoration_manager = wl_registry_bind(
+        registry, id, &zxdg_decoration_manager_v1_interface, 1);
+  }
+
   else if (strcmp(interface, xdg_wm_base_interface.name) == 0) {
     bread_log_debug("Binding wm_base");
     state->xdg_wm_base =
@@ -114,6 +122,16 @@ static void wl_state_cleanup(wl_state_t *state) {
   if (state->seat) {
     bread_log_debug("Cleaning up seat");
     bread_wayland_seat_cleanup(state);
+  }
+
+  if (state->decoration) {
+    bread_log_debug("Destroying decoration");
+    zxdg_toplevel_decoration_v1_destroy(state->decoration);
+  }
+
+  if (state->decoration_manager) {
+    bread_log_debug("Destroying decoration manager");
+    zxdg_decoration_manager_v1_destroy(state->decoration_manager);
   }
 
   if (state->xdg_toplevel) {
@@ -212,6 +230,16 @@ static void wayland_init(bread_window_t *window) {
     bread_log_debug("Setting window title to %s",
                     string_to_cstr(window->title));
     xdg_toplevel_set_title(state->xdg_toplevel, string_to_cstr(window->title));
+  }
+
+  if (state->decoration_manager) {
+    bread_log_debug("Getting decoration");
+    state->decoration = zxdg_decoration_manager_v1_get_toplevel_decoration(
+        state->decoration_manager, state->xdg_toplevel);
+    zxdg_toplevel_decoration_v1_set_mode(
+        state->decoration, ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE);
+  } else {
+    bread_log_debug("No decoration manager, disabling decoration");
   }
 
   bread_log_debug("Committing surface");
