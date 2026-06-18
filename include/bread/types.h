@@ -218,6 +218,7 @@ typedef struct bread_window {
   u16 width;
   u16 height;
   string *title;
+  string *class;
   void *backend;
   arena_t *arena;
 

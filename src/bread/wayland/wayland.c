@@ -219,6 +219,12 @@ static void wayland_init(bread_window_t *window) {
   bread_log_debug("Flushing display");
   wl_display_roundtrip(state->display);
 
+  if (!window->class) {
+    xdg_toplevel_set_app_id(state->xdg_toplevel, "bread-app");
+  } else {
+    xdg_toplevel_set_app_id(state->xdg_toplevel, string_to_cstr(window->class));
+  }
+
   bread_log_debug("Setting running to true");
   state->running = true;
   bread_log_debug("Setting window backend");

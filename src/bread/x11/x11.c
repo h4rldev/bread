@@ -53,6 +53,22 @@ static void x11_init(bread_window_t *window) {
   x11_state_t *state = arena_alloc(arena, x11_state_t, 1);
   window->backend = state;
   state->window = window;
+  string *class = {0};
+
+  if (window->class) {
+    class = string_new(arena, window->class->len * 2 + 2);
+    memcpy(class->base, window->class->base, window->class->len);
+    memset(class->base + window->class->len, 0, 1);
+    memcpy(class->base + window->class->len + 1, window->class->base,
+           window->class->len);
+    memset(class->base + window->class->len + 1 + window->class->len, 0, 1);
+  } else {
+    class = string_new(arena, 12);
+    memcpy(class->base, "bread", 5);
+    memset(class->base + 5, 0, 1);
+    memcpy(class->base + 6, "bread", 5);
+    memset(class->base + 11, 0, 1);
+  }
 
   int screen_num = 0;
   bread_log_debug("Connecting to X server");
@@ -116,6 +132,10 @@ static void x11_init(bread_window_t *window) {
                                value_list);
   bread_log_debug("Flushing X11 connection");
   xcb_flush(state->connection);
+
+  xcb_change_property(state->connection, XCB_PROP_MODE_REPLACE,
+                      state->xcb_window, XCB_ATOM_WM_CLASS, XCB_ATOM_STRING, 8,
+                      class->len, class->base);
 
   bread_log_debug("Setting running to true");
   state->running = true;
