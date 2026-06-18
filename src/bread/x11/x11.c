@@ -10,6 +10,7 @@
 #include <htils/string.h>
 
 #include <bread/backend.h>
+#include <bread/log.h>
 #include <bread/types.h>
 #include <bread/window.h>
 #include <bread/x11/x11_input.h>
@@ -18,12 +19,15 @@
 #include <xcb/xcb_icccm.h>
 
 static xcb_atom_t intern_atom(xcb_connection_t *conn, const cstr *name) {
+  bread_log_debug("Interning atom");
+
   xcb_intern_atom_cookie_t cookie =
       xcb_intern_atom(conn, 0, strlen(name), name);
   xcb_intern_atom_reply_t *reply = xcb_intern_atom_reply(conn, cookie, NULL);
 
   xcb_atom_t atom = XCB_ATOM_NONE;
   if (reply) {
+    bread_log_debug("Got atom");
     atom = reply->atom;
     free(reply);
   }
@@ -32,40 +36,49 @@ static xcb_atom_t intern_atom(xcb_connection_t *conn, const cstr *name) {
 }
 
 static void x11_state_cleanup(x11_state_t *state) {
-  if (state->xcb_window)
+  bread_log_debug("Cleaning up x11 state");
+  if (state->xcb_window) {
+    bread_log_debug("Destroying window");
     xcb_destroy_window(state->connection, state->xcb_window);
-  if (state->connection)
+  }
+  if (state->connection) {
+    bread_log_debug("Disconnecting from X server");
     xcb_disconnect(state->connection);
+  }
 }
 
 static void x11_init(bread_window_t *window) {
+  bread_log_debug("Initializing x11 window");
   arena_t *arena = window->arena;
   x11_state_t *state = arena_alloc(arena, x11_state_t, 1);
   window->backend = state;
   state->window = window;
 
   int screen_num = 0;
+  bread_log_debug("Connecting to X server");
   state->connection = xcb_connect(NULL, &screen_num);
   int has_error = xcb_connection_has_error(state->connection);
   if (has_error) {
-    fprintf(stderr, "bread-x11: Failed to connect to X server: %d\n",
-            has_error);
+    bread_log_error("Failed to connect to X server: %d", has_error);
     xcb_disconnect(state->connection);
     window->backend = NULL;
     return;
   }
 
+  bread_log_debug("Getting screen info");
   const xcb_setup_t *setup = xcb_get_setup(state->connection);
   xcb_screen_iterator_t iter = xcb_setup_roots_iterator(setup);
   for (int i = 0; i < screen_num; i++) {
     xcb_screen_next(&iter);
   }
 
+  bread_log_debug("Setting up window");
   state->screen = iter.data;
   state->width = window->width;
   state->height = window->height;
   state->xcb_window = xcb_generate_id(state->connection);
 
+  bread_log_debug("Creating window with mask");
   u32 value_mask = XCB_CW_EVENT_MASK;
   u32 value_list[] = {
       XCB_EVENT_MASK_EXPOSURE | XCB_EVENT_MASK_STRUCTURE_NOTIFY |
@@ -78,35 +91,48 @@ static void x11_init(bread_window_t *window) {
                     XCB_WINDOW_CLASS_INPUT_OUTPUT, state->screen->root_visual,
                     value_mask, value_list);
 
-  if (window->title)
+  if (window->title) {
+    bread_log_debug("Setting window title to %s",
+                    string_to_cstr(window->title));
     xcb_change_property(state->connection, XCB_PROP_MODE_REPLACE,
                         state->xcb_window, XCB_ATOM_WM_NAME, XCB_ATOM_STRING, 8,
                         window->title->len, window->title->base);
+  }
 
+  bread_log_debug("Setting intern WM_PROTOCOLS");
   state->wm_protocols = intern_atom(state->connection, "WM_PROTOCOLS");
+  bread_log_debug("Setting intern WM_DELETE_WINDOW");
   state->wm_delete_window = intern_atom(state->connection, "WM_DELETE_WINDOW");
 
+  bread_log_debug("Setting WM_PROTOCOLS");
   xcb_change_property(state->connection, XCB_PROP_MODE_REPLACE,
                       state->xcb_window, state->wm_protocols, XCB_ATOM_ATOM, 32,
                       1, &state->wm_delete_window);
 
+  bread_log_debug("Mapping window");
   xcb_map_window(state->connection, state->xcb_window);
+  bread_log_debug("Flushing X11 connection");
   xcb_flush(state->connection);
 
+  bread_log_debug("Setting running to true");
   state->running = true;
 }
 
 static void x11_poll_events(bread_window_t *window) {
   x11_state_t *state = window->backend;
-  if (!state)
+  if (!state) {
+    bread_log_fatal("No X11 state, can't poll events");
     return;
+  }
 
   xcb_generic_event_t *event;
   while ((event = xcb_poll_for_event(state->connection))) {
     u8 type = event->response_type & ~0x80;
+    bread_log_debug("Got event of type %d", type);
 
     switch (type) {
     case XCB_CLIENT_MESSAGE: {
+      bread_log_debug("Got client message");
       xcb_client_message_event_t *client_message =
           (xcb_client_message_event_t *)event;
       if (client_message->data.data32[0] == state->wm_delete_window) {
@@ -120,6 +146,7 @@ static void x11_poll_events(bread_window_t *window) {
     } break;
 
     case XCB_CONFIGURE_NOTIFY: {
+      bread_log_debug("Got configure notify");
       xcb_configure_notify_event_t *cfg = (xcb_configure_notify_event_t *)event;
       state->width = cfg->width;
       state->height = cfg->height;
@@ -133,6 +160,7 @@ static void x11_poll_events(bread_window_t *window) {
     } break;
 
     case XCB_KEY_PRESS: {
+      bread_log_debug("Got key press");
       xcb_key_press_event_t *key = (xcb_key_press_event_t *)event;
       bread_x11_handle_key_press(state, key);
 
@@ -145,6 +173,7 @@ static void x11_poll_events(bread_window_t *window) {
     } break;
 
     case XCB_KEY_RELEASE: {
+      bread_log_debug("Got key release");
       xcb_key_release_event_t *key = (xcb_key_release_event_t *)event;
       bread_x11_handle_key_release(state, key);
 
@@ -158,10 +187,12 @@ static void x11_poll_events(bread_window_t *window) {
     } break;
 
     case XCB_BUTTON_PRESS: {
+      bread_log_debug("Got button press");
       xcb_button_press_event_t *button = (xcb_button_press_event_t *)event;
       bread_x11_handle_button_press(state, button);
 
       if (button->detail == 4 || button->detail == 5) {
+        bread_log_debug("Emitting mouse scroll");
         bread_event_t event = {
             .type = BREAD_EVENT_MOUSE_SCROLL,
         };
@@ -171,6 +202,7 @@ static void x11_poll_events(bread_window_t *window) {
         break;
       }
 
+      bread_log_debug("Emitting mouse press");
       bread_mouse_button_t mouse_button = xcb_button_to_bread(button->detail);
       bread_event_t event = {
           .type = BREAD_EVENT_MOUSE_PRESS,
@@ -180,6 +212,7 @@ static void x11_poll_events(bread_window_t *window) {
     } break;
 
     case XCB_BUTTON_RELEASE: {
+      bread_log_debug("Got button release");
       xcb_button_release_event_t *button = (xcb_button_release_event_t *)event;
       bread_x11_handle_button_release(state, button);
       if (button->detail == 4 || button->detail == 5)
@@ -194,6 +227,7 @@ static void x11_poll_events(bread_window_t *window) {
     } break;
 
     case XCB_MOTION_NOTIFY: {
+      bread_log_debug("Got motion notify");
       xcb_motion_notify_event_t *motion = (xcb_motion_notify_event_t *)event;
       bread_x11_handle_motion(state, motion);
 
@@ -206,10 +240,12 @@ static void x11_poll_events(bread_window_t *window) {
     } break;
 
     case XCB_DESTROY_NOTIFY: {
+      bread_log_debug("Got destroy notify");
       state->running = false;
     } break;
 
     default:
+      bread_log_debug("Got unknown event");
       break;
     }
 
@@ -225,15 +261,19 @@ static b32 x11_should_close(bread_window_t *window) {
 }
 
 static void x11_destroy(bread_window_t *window) {
+  bread_log_debug("Destroying X11 window");
   x11_state_t *state = window->backend;
-  if (!state)
+  if (!state) {
+    bread_log_debug("Window already destroyed");
     return;
+  }
 
   x11_state_cleanup(state);
   window->backend = NULL;
 }
 
 static bread_surface_t x11_get_surface(bread_window_t *window) {
+  bread_log_debug("Getting X11 surface");
   x11_state_t *state = window->backend;
   return (bread_surface_t){
       .handle = (void *)(uintptr_t)state->xcb_window,

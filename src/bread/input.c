@@ -1,6 +1,7 @@
 #include <xkbcommon/xkbcommon.h>
 
 #include <bread/input.h>
+#include <bread/log.h>
 #include <bread/window.h>
 
 #if BREAD_WAYLAND
@@ -160,9 +161,11 @@ bread_mouse_button_t bread_evdev_to_mouse_button(u32 button) {
 
 bread_input_state_t bread_window_get_input(bread_window_t *window) {
 #if BREAD_WAYLAND
+  bread_log_debug("Getting input state for wayland");
   wl_state_t *state = window->backend;
   return state->input;
 #elif BREAD_X11
+  bread_log_debug("Getting input state for x11");
   x11_state_t *state = window->backend;
   return state->input;
 #endif
@@ -174,6 +177,7 @@ u32 bread_event_key_to_unicode(bread_window_t *window, bread_event_t *event) {
     return 0;
 
 #if BREAD_WAYLAND
+  bread_log_debug("Converting key to unicode for wayland");
   wl_state_t *state = window->backend;
   if (!state->xkb_state)
     return 0;
@@ -182,6 +186,7 @@ u32 bread_event_key_to_unicode(bread_window_t *window, bread_event_t *event) {
   return xkb_keysym_to_utf32(
       xkb_state_key_get_one_sym(state->xkb_state, keycode));
 #elif BREAD_X11
+  bread_log_debug("Converting key to unicode for x11");
   x11_state_t *state = window->backend;
   if (!state->xkb_state)
     return 0;

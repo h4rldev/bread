@@ -42,7 +42,7 @@ debug_static_link_flags := shared_flags_debug + ' -static -fPIC'
 ## Compile flags
 
 release_compile_flags := shared_flags_release
-debug_compile_flags := shared_flags_debug + ' -Wall -Wextra -Wpedantic -Wno-unused-parameter'
+debug_compile_flags := shared_flags_debug + ' -Wall -Wextra -Wpedantic -Wno-unused-parameter -DBREAD_DEBUG'
 
 ## Platform specific flags
 

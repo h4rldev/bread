@@ -235,4 +235,13 @@ typedef struct {
   bread_backend_type_t backend_type;
 } bread_backend_vtable_t;
 
+/// log.h
+typedef enum bread_log_level {
+  BREAD_LOG_LEVEL_DEBUG,
+  BREAD_LOG_LEVEL_INFO,
+  BREAD_LOG_LEVEL_WARN,
+  BREAD_LOG_LEVEL_ERROR,
+  BREAD_LOG_LEVEL_FATAL,
+} bread_log_level_t;
+
 #endif // !BREAD_TYPES_H

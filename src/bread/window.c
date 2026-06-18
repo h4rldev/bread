@@ -1,4 +1,6 @@
 #include <bread/backend.h>
+#include <bread/log.h>
+#include <bread/types.h>
 #include <bread/window.h>
 
 #ifdef BREAD_WAYLAND
@@ -22,6 +24,7 @@ static const bread_backend_vtable_t *get_backend_vtable(void) {
 }
 
 void bread_window_init(bread_window_t *window) {
+  bread_log_debug("Initializing window");
   get_backend_vtable()->init(window);
 }
 
@@ -34,13 +37,16 @@ b32 bread_window_should_close(bread_window_t *window) {
 }
 
 void bread_window_destroy(bread_window_t *window) {
+  bread_log_debug("Destroying window");
   get_backend_vtable()->destroy(window);
 }
 
 bread_surface_t bread_window_get_surface(bread_window_t *window) {
+  bread_log_debug("Getting surface");
   return get_backend_vtable()->get_surface(window);
 }
 
 bread_backend_type_t bread_get_backend_type(void) {
+  bread_log_debug("Getting backend type");
   return get_backend_vtable()->backend_type;
 }
