@@ -2,6 +2,7 @@
 
 #if BREAD_WAYLAND
 
+#include <poll.h>
 #include <string.h>
 
 #include <htils/basictypes.h>
@@ -63,7 +64,14 @@ static const xdg_toplevel_listener_t xdg_toplevel_listener = {
 static void xdg_surface_configure(void *data, xdg_surface_t *surface,
                                   u32 serial) {
   bread_log_debug("Got surface configure");
+  wl_state_t *state = data;
+  if (!state) {
+    bread_log_fatal("No state, can't update surface");
+    return;
+  }
+
   xdg_surface_ack_configure(surface, serial);
+  wl_surface_commit(state->wl_surface);
 }
 
 static const xdg_surface_listener_t xdg_surface_listener = {
@@ -220,18 +228,29 @@ static void wayland_init(bread_window_t *window) {
 static void wayland_poll_events(bread_window_t *window) {
   wl_state_t *state = window->backend;
   if (!state) {
-    bread_log_fatal("No wayland state, can't poll events");
+    bread_log_fatal("No state, can't poll events");
     return;
   }
 
-  while (wl_display_prepare_read(state->display) != 0) {
-    bread_log_debug("Dispatching pending");
-    wl_display_dispatch_pending(state->display);
-  }
+  struct pollfd fds = {
+      .fd = wl_display_get_fd(state->display),
+      .events = POLLIN,
+  };
 
-  wl_display_flush(state->display);
-  wl_display_read_events(state->display);
-  wl_display_dispatch_pending(state->display);
+  int ret = poll(&fds, 1, 0);
+  if (ret > 0 && (fds.revents & POLLIN)) {
+    bread_log_debug("Found event, processing");
+    while (wl_display_prepare_read(state->display) != 0)
+      wl_display_dispatch_pending(state->display);
+
+    wl_display_flush(state->display);
+    wl_display_read_events(state->display);
+    wl_display_dispatch_pending(state->display);
+  } else {
+    bread_log_debug("No event, flushing");
+    wl_display_dispatch_pending(state->display);
+    wl_display_flush(state->display);
+  }
 }
 
 static b32 wayland_should_close(bread_window_t *window) {

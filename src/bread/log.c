@@ -1,5 +1,7 @@
 #include <stdarg.h>
 #include <stdio.h>
+#include <string.h>
+#include <threads.h>
 
 #include <htils/arena.h>
 #include <htils/path.h>
@@ -14,6 +16,11 @@
 #define COLOR_YELLOW "\x1b[33m"
 #define COLOR_BLUE "\x1b[34m"
 #define COLOR_CYAN "\x1b[36m"
+
+static thread_local cstr last_level[20] = {0};
+static thread_local cstr last_msg[4096] = {0};
+static thread_local u64 repeat_count = 0;
+static thread_local b32 has_printed = false;
 
 void bread_log(bread_log_level_t level, cstr *fmt, ...) {
 #ifndef BREAD_DEBUG
@@ -47,5 +54,23 @@ void bread_log(bread_log_level_t level, cstr *fmt, ...) {
   vsnprintf(fmt_str, 4096, fmt, args);
   va_end(args);
 
+  if (memcmp(last_level, level_str, 20) == 0 &&
+      memcmp(last_msg, fmt_str, 4096) == 0) {
+    repeat_count++;
+    fprintf(stderr, "\r[BREAD] %s: %s [x%lu]", level_str, fmt_str,
+            repeat_count + 1);
+    fflush(stderr);
+    has_printed = true;
+    return;
+  }
+
+  if (has_printed) {
+    fprintf(stderr, "\n");
+    fflush(stderr);
+    has_printed = false;
+  }
+
   fprintf(stderr, "[BREAD] %s: %s\n", level_str, fmt_str);
+  memcpy(last_level, level_str, 20);
+  memcpy(last_msg, fmt_str, 4096);
 }
