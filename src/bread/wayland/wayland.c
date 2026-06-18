@@ -175,7 +175,7 @@ static void wayland_poll_events(bread_window_t *window) {
     wl_display_dispatch_pending(state->display);
 
   wl_display_flush(state->display);
-  wl_display_cancel_read(state->display);
+  wl_display_read_events(state->display);
   wl_display_dispatch_pending(state->display);
 }
 
