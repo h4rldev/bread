@@ -2,7 +2,6 @@
 
 #if BREAD_X11
 
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -137,6 +136,8 @@ static void x11_init(bread_window_t *window) {
   xcb_change_property(state->connection, XCB_PROP_MODE_REPLACE,
                       state->xcb_window, XCB_ATOM_WM_CLASS, XCB_ATOM_STRING, 8,
                       class->len, class->base);
+
+  bread_x11_xkb_init(state);
 
   bread_log_debug("Setting running to true");
   state->running = true;

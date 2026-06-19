@@ -310,8 +310,10 @@ static void wayland_destroy(bread_window_t *window) {
 static bread_surface_t wayland_get_surface(bread_window_t *window) {
   bread_log_debug("Getting wayland surface");
   wl_state_t *state = window->backend;
-  return (bread_surface_t){.handle = state->wl_surface,
-                           .display = state->display};
+  return (bread_surface_t){
+      .handle = state->wl_surface,
+      .display = state->display,
+  };
 }
 
 const bread_backend_vtable_t bread_wayland_backend = {
