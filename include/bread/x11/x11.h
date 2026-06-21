@@ -27,6 +27,7 @@ typedef struct {
 
   xcb_atom_t wm_protocols;
   xcb_atom_t wm_delete_window;
+  xcb_atom_t net_wm_name;
 
   xkb_context_t *xkb_context;
   xkb_keymap_t *xkb_keymap;

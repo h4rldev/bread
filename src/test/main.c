@@ -15,9 +15,11 @@ int main(void) {
   bread_window_t window = {
       .width = 100,
       .height = 100,
-      .title = string_from_cstr(arena, "Hello, World!"),
       .arena = arena,
   };
+
+  bread_window_set_title(&window, "Test Window");
+  bread_window_set_min_size(&window, 100, 100);
 
   bread_window_set_event_callback(&window, bread_event_callback, NULL);
   bread_window_init(&window);

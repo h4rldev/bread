@@ -22,15 +22,41 @@
 #include <wayland/xdg-decoration-client-protocol.h>
 #include <wayland/xdg-shell-client-protocol.h>
 
+/**
+ * @brief Ping the wm_base.
+ *
+ * @details Pings the wm_base, and responds with a pong.
+ *
+ * @param data The data pointer.
+ * @param wm The wm_base.
+ * @param serial The serial.
+ *
+ * @pre @c wm and @c serial must be valid.
+ */
 static void xdg_wm_base_ping(void *data, xdg_wm_base_t *wm, u32 serial) {
   bread_log_debug("Got wm_base ping");
   xdg_wm_base_pong(wm, serial);
 }
 
+/**
+ * @brief The wm_base listener.
+ *
+ * @details Which is used to listen for pings.
+ */
 static const xdg_wm_base_listener_t xdg_wm_base_listener = {
     .ping = xdg_wm_base_ping,
 };
 
+/**
+ * @brief Close the toplevel.
+ *
+ * @details Closes the toplevel, and sets the running flag to false.
+ *
+ * @param data The data pointer.
+ * @param toplevel The toplevel.
+ *
+ * @pre @c data, and @c toplevel must be valid.
+ */
 static void xdg_toplevel_close(void *data, xdg_toplevel_t *toplevel) {
   bread_log_debug("Got toplevel close");
   wl_state_t *state = data;
@@ -40,6 +66,16 @@ static void xdg_toplevel_close(void *data, xdg_toplevel_t *toplevel) {
   fire_event(state->window, &event);
 }
 
+/**
+ * @brief Configure the toplevel.
+ *
+ * @details Fires an event if the window size is changed.
+ *
+ * @param data The data pointer.
+ * @param toplevel The toplevel.
+ *
+ * @pre @c data, and @c toplevel must be valid.
+ */
 static void xdg_toplevel_configure(void *data, xdg_toplevel_t *toplevel,
                                    i32 width, i32 height, wl_array_t *states) {
   bread_log_debug("Got toplevel configure");
@@ -58,11 +94,28 @@ static void xdg_toplevel_configure(void *data, xdg_toplevel_t *toplevel,
   }
 }
 
+/**
+ * @brief The toplevel listener.
+ *
+ * @details Which is used to listen for toplevel events such as close and
+ * configure.
+ */
 static const xdg_toplevel_listener_t xdg_toplevel_listener = {
     .close = xdg_toplevel_close,
     .configure = xdg_toplevel_configure,
 };
 
+/**
+ * @brief Configure the surface.
+ *
+ * @details Acks the configure, and updates the surface.
+ *
+ * @param data The data pointer.
+ * @param surface The surface.
+ * @param serial The serial.
+ *
+ * @pre @c data, @c surface, and @c serial must be valid.
+ */
 static void xdg_surface_configure(void *data, xdg_surface_t *surface,
                                   u32 serial) {
   bread_log_debug("Got surface configure");
@@ -76,10 +129,29 @@ static void xdg_surface_configure(void *data, xdg_surface_t *surface,
   wl_surface_commit(state->wl_surface);
 }
 
+/**
+ * @brief The surface listener.
+ *
+ * @details Which is used to listen for configure events.
+ */
 static const xdg_surface_listener_t xdg_surface_listener = {
     .configure = xdg_surface_configure,
 };
 
+/**
+ * @brief Handes registry binds.
+ *
+ * @details Binds the compositor, shm, seat, and SSD manager. Binds and listens
+ * the wm_base.
+ *
+ * @param data The data pointer.
+ * @param registry The registry.
+ * @param id The id.
+ * @param interface The interface.
+ * @param version The version.
+ *
+ * @pre @c data, @c registry, @c id, @c interface, and @c version must be valid.
+ */
 static void global_registry_handler(void *data, wl_registry_t *registry, u32 id,
                                     const cstr *interface, u32 version) {
   bread_log_debug("Handling registry event");
@@ -115,9 +187,26 @@ static void global_registry_handler(void *data, wl_registry_t *registry, u32 id,
   }
 }
 
+/**
+ * @brief Removes the registry.
+ * @details Noop because the registry is cleaned up in @ref wl_state_cleanup().
+ *
+ * @see @ref wl_state_cleanup().
+ */
 static void global_registry_remover(void *data, wl_registry_t *registry,
                                     u32 id) {}
 
+/**
+ * @brief Cleans up the wayland state.
+ *
+ * @details Cleans up the seat, decoration, decoration manager, xdg_toplevel,
+ * xdg_surface, wl_surface, wm_base, shm, compositor, registry, and display if
+ * they exist.
+ *
+ * @param state The wayland state.
+ *
+ * @pre @c state must be valid.
+ */
 static void wl_state_cleanup(wl_state_t *state) {
   if (state->seat) {
     bread_log_debug("Cleaning up seat");
@@ -175,11 +264,27 @@ static void wl_state_cleanup(wl_state_t *state) {
   }
 }
 
+/**
+ * @brief The registry listener.
+ *
+ * @details Which is used to listen for global resitry events.
+ */
 static const wl_registry_listener_t registry_listener = {
     .global = global_registry_handler,
     .global_remove = global_registry_remover,
 };
 
+/**
+ * @brief Initializes the wayland window.
+ *
+ * @details Connects to the display socket, gets the screen, and creates the
+ * window, sets the app-id, title and minimum size to what's specified if
+ * they're defined in @c window.
+ *
+ * @param window The window to initialize.
+ *
+ * @pre @c window must be valid and created by @ref bread_window_new().
+ */
 static void wayland_init(bread_window_t *window) {
   bread_log_debug("Initializing wayland window");
 
@@ -226,6 +331,11 @@ static void wayland_init(bread_window_t *window) {
   bread_log_debug("Adding toplevel listener");
   xdg_toplevel_add_listener(state->xdg_toplevel, &xdg_toplevel_listener, state);
 
+  if (window->min_width > 0 && window->min_height > 0) {
+    xdg_toplevel_set_min_size(state->xdg_toplevel, window->min_width,
+                              window->min_height);
+  }
+
   if (window->title) {
     bread_log_debug("Setting window title to %s",
                     string_to_cstr(window->title));
@@ -259,6 +369,16 @@ static void wayland_init(bread_window_t *window) {
   window->backend = state;
 }
 
+/**
+ * @brief Polls for events on the wayland window.
+ *
+ * @details Uses poll to poll the display file descriptor for events, and if
+ * there's any it reads them, and dispatches them.
+ *
+ * @param window The window to poll for events.
+ *
+ * @pre @c window must be valid and created by @ref bread_window_new().
+ */
 static void wayland_poll_events(bread_window_t *window) {
   wl_state_t *state = window->backend;
   if (!state) {
@@ -287,6 +407,18 @@ static void wayland_poll_events(bread_window_t *window) {
   }
 }
 
+/**
+ * @brief Checks if the wayland window should close.
+ *
+ * @details Useful for an application's event loop, and it's designed with that
+ * in mind.
+ *
+ * @param window The window to check.
+ *
+ * @pre @c window must be valid and created by @ref bread_window_new().
+ *
+ * @return true if the window should close, false if not.
+ */
 static b32 wayland_should_close(bread_window_t *window) {
   wl_state_t *state = window->backend;
   if (!state) {
@@ -296,6 +428,18 @@ static b32 wayland_should_close(bread_window_t *window) {
   return !state->running;
 }
 
+/**
+ * @brief Destroys the wayland window.
+ *
+ * @details Cleans up the wayland state with @ref wl_state_cleanup(), and sets
+ * the backend to null.
+ *
+ * @param window The window to destroy.
+ *
+ * @pre @c window must be valid and created by @ref bread_window_new().
+ *
+ * @see @ref bread_window_new(), @ref wl_state_cleanup().
+ */
 static void wayland_destroy(bread_window_t *window) {
   bread_log_debug("Destroying wayland window");
   wl_state_t *state = window->backend;
@@ -304,9 +448,20 @@ static void wayland_destroy(bread_window_t *window) {
     return;
   }
   wl_state_cleanup(state);
-  window->backend = NULL;
+  window->backend = null;
 }
 
+/**
+ * @brief Gets the wayland surface.
+ *
+ * @details Which is the wl_surface, and the wl_display.
+ *
+ * @param window The window to get the surface from.
+ *
+ * @pre @c window must be valid and created by @ref bread_window_new().
+ *
+ * @return The surface of the wayland window as a bread surface.
+ */
 static bread_surface_t wayland_get_surface(bread_window_t *window) {
   bread_log_debug("Getting wayland surface");
   wl_state_t *state = window->backend;
@@ -316,12 +471,77 @@ static bread_surface_t wayland_get_surface(bread_window_t *window) {
   };
 }
 
+/**
+ * @brief Sets the title of the wayland window.
+ *
+ * @details Updates the internal title and sets the xdg_toplevel's title, then
+ * commits the surface.
+ *
+ * @param window The window to set the title of.
+ *
+ * @pre @c window must be valid and created by @ref bread_window_new().
+ */
+static void wayland_set_title(bread_window_t *window, const char *title) {
+  wl_state_t *state = window->backend;
+  if (!state || !state->xdg_toplevel)
+    return;
+
+  window->title = string_from_cstr(window->arena, title);
+  xdg_toplevel_set_title(state->xdg_toplevel, title);
+  wl_surface_commit(state->wl_surface);
+}
+
+/**
+ * @brief Sets the minimum size of the wayland window.
+ *
+ * @details Updates the internal minimum size and sets the xdg_toplevel's
+ * minimum width, and height, then commits the surface. If width and height
+ * passed are equal to the already set minimum size or 0 then this function does
+ * nothing.
+ *
+ * @param window The window to set the minimum size of.
+ * @param width The minimum width of the window.
+ * @param height The minimum height of the window.
+ *
+ * @pre @c window must be valid and created by @ref bread_window_new().
+ */
+static void wayland_set_min_size(bread_window_t *window, u16 width,
+                                 u16 height) {
+  wl_state_t *state = window->backend;
+  if (!state || !state->xdg_toplevel)
+    return;
+
+  if ((width == window->min_width && height == window->min_height) ||
+      (width == 0 && height == 0))
+    return;
+
+  window->min_width = width;
+  window->min_height = height;
+
+  xdg_toplevel_set_min_size(state->xdg_toplevel, width, height);
+  wl_surface_commit(state->wl_surface);
+}
+
+/**
+ * @brief Get the wayland backend.
+ *
+ * @param init The init function.
+ * @param poll_events The poll events function.
+ * @param should_close The should close function.
+ * @param destroy The destroy function.
+ * @param get_surface The get surface function.
+ * @param set_title The set title function.
+ * @param set_min_size The set min size function.
+ * @param backend_type The backend type which is BREAD_BACKEND_WAYLAND.
+ */
 const bread_backend_vtable_t bread_wayland_backend = {
     .init = wayland_init,
     .poll_events = wayland_poll_events,
     .should_close = wayland_should_close,
     .destroy = wayland_destroy,
     .get_surface = wayland_get_surface,
+    .set_title = wayland_set_title,
+    .set_min_size = wayland_set_min_size,
     .backend_type = BREAD_BACKEND_WAYLAND,
 };
 #endif // BREAD_WAYLAND

@@ -17,6 +17,18 @@
 #include <xcb/xcb.h>
 #include <xcb/xcb_icccm.h>
 
+/**
+ * @brief Interns an atom.
+ *
+ * @details Takes the name, interns it into an atom, then returns the atom.
+ *
+ * @param conn The xcb connection.
+ * @param name The name of the atom.
+ *
+ * @pre
+ * - @c conn must be a valid xcb connection.
+ * - @c name must be a valid null-terminated C-String.
+ */
 static xcb_atom_t intern_atom(xcb_connection_t *conn, const cstr *name) {
   bread_log_debug("Interning atom");
 
@@ -34,6 +46,18 @@ static xcb_atom_t intern_atom(xcb_connection_t *conn, const cstr *name) {
   return atom;
 }
 
+/**
+ * @brief Cleans up the X11 state.
+ *
+ * @details Destroys the window if it exists, and disconnects the xcb connection
+ * if it exists.
+ *
+ * @param state The X11 state.
+ *
+ * @pre @c state must be valid and created by @ref x11_init().
+ *
+ * @see @ref x11_init().
+ */
 static void x11_state_cleanup(x11_state_t *state) {
   bread_log_debug("Cleaning up x11 state");
   if (state->xcb_window) {
@@ -46,6 +70,18 @@ static void x11_state_cleanup(x11_state_t *state) {
   }
 }
 
+/**
+ * @brief Initializes the X11 window.
+ *
+ * @details Creates the X11 state, sets the window backend, initializes the xcb
+ * connection, screens, and window, and sets the running flag to true.
+ *
+ * @param window The window to initialize.
+ *
+ * @pre @c window must be valid and created by @ref bread_window_new().
+ *
+ * @see @ref bread_window_new().
+ */
 static void x11_init(bread_window_t *window) {
   bread_log_debug("Initializing x11 window");
   arena_t *arena = window->arena;
@@ -118,7 +154,8 @@ static void x11_init(bread_window_t *window) {
   state->wm_protocols = intern_atom(state->connection, "WM_PROTOCOLS");
   bread_log_debug("Setting intern WM_DELETE_WINDOW");
   state->wm_delete_window = intern_atom(state->connection, "WM_DELETE_WINDOW");
-  bread_log_debug("WM_DELETE_WINDOW: %d", state->wm_delete_window);
+  bread_log_debug("Setting intern _NET_WM_NAME");
+  state->net_wm_name = intern_atom(state->connection, "_NET_WM_NAME");
 
   bread_log_debug("Setting WM_PROTOCOLS");
   xcb_change_property(state->connection, XCB_PROP_MODE_REPLACE,
@@ -130,6 +167,17 @@ static void x11_init(bread_window_t *window) {
   bread_log_debug("Reapplying mask");
   xcb_change_window_attributes(state->connection, state->xcb_window, value_mask,
                                value_list);
+
+  if (window->min_width > 0 && window->min_height > 0) {
+    xcb_size_hints_t hints = {
+        .flags = XCB_ICCCM_SIZE_HINT_P_MIN_SIZE,
+        .min_width = window->min_width,
+        .min_height = window->min_height,
+    };
+
+    xcb_icccm_set_wm_normal_hints(state->connection, state->xcb_window, &hints);
+  }
+
   bread_log_debug("Flushing X11 connection");
   xcb_flush(state->connection);
 
@@ -143,6 +191,18 @@ static void x11_init(bread_window_t *window) {
   state->running = true;
 }
 
+/**
+ * @brief Polls for events on the X11 window.
+ *
+ * @details Polls for events on the X11 window, and fires events for each XCB
+ * event triggered.
+ *
+ * @param window The window to poll for events.
+ *
+ * @pre @c window must be valid and created by @ref bread_window_new().
+ *
+ * @see @ref bread_window_new().
+ */
 static void x11_poll_events(bread_window_t *window) {
   x11_state_t *state = window->backend;
   if (!state) {
@@ -278,6 +338,18 @@ static void x11_poll_events(bread_window_t *window) {
   }
 }
 
+/**
+ * @brief Checks if the X11 window should close.
+ *
+ * @details Useful for an application's event loop, and it's designed with that
+ * in mind.
+ *
+ * @param window The window to check.
+ *
+ * @pre @c window must be valid and created by @ref bread_window_new().
+ *
+ * @return true if the window should close, false if not.
+ */
 static b32 x11_should_close(bread_window_t *window) {
   x11_state_t *state = window->backend;
   if (!state)
@@ -285,6 +357,18 @@ static b32 x11_should_close(bread_window_t *window) {
   return !state->running;
 }
 
+/**
+ * @brief Destroys the X11 window.
+ *
+ * @details Cleans up the X11 state with @ref x11_state_cleanup(), and sets the
+ * window backend to NULL.
+ *
+ * @param window The window to destroy.
+ *
+ * @pre @c window must be valid and created by @ref bread_window_new().
+ *
+ * @see @ref bread_window_new().
+ */
 static void x11_destroy(bread_window_t *window) {
   bread_log_debug("Destroying X11 window");
   x11_state_t *state = window->backend;
@@ -297,6 +381,17 @@ static void x11_destroy(bread_window_t *window) {
   window->backend = NULL;
 }
 
+/**
+ * @brief Gets the X11 surface.
+ *
+ * @details Which is the xcb window, and the xcb connection as void pointers.
+ *
+ * @param window The window to get the surface from.
+ *
+ * @pre @c window must be valid and created by @ref bread_window_new().
+ *
+ * @return The surface of the X11 window as a bread surface.
+ */
 static bread_surface_t x11_get_surface(bread_window_t *window) {
   bread_log_debug("Getting X11 surface");
   x11_state_t *state = window->backend;
@@ -306,12 +401,114 @@ static bread_surface_t x11_get_surface(bread_window_t *window) {
   };
 }
 
+/**
+ * @brief Sets the title of the X11 window.
+ *
+ * @details Updates the WM_NAME and the _NET_WM_NAME if available.
+ *
+ * @param window The window to set the title of.
+ * @param title The title to set.
+ *
+ * @pre
+ * - @c window must be valid and create by @ref bread_window_new
+ * - @c title must be a valid null-terminated C-String.
+ */
+static void x11_set_title(bread_window_t *window, const char *title) {
+  x11_state_t *state = window->backend;
+  if (!state || !state->connection)
+    return;
+
+  window->title = string_from_cstr(window->arena, title);
+
+  size_t len = strlen(title);
+
+  xcb_change_property(state->connection, XCB_PROP_MODE_REPLACE,
+                      state->xcb_window, XCB_ATOM_WM_NAME, XCB_ATOM_STRING, 8,
+                      len, title);
+
+  if (state->net_wm_name != XCB_ATOM_NONE) {
+    xcb_change_property(state->connection, XCB_PROP_MODE_REPLACE,
+                        state->xcb_window, state->net_wm_name, XCB_ATOM_STRING,
+                        8, len, title);
+  }
+
+  xcb_flush(state->connection);
+}
+
+/**
+ * @brief Set the minimum size of the window.
+ *
+ * @details Gets the wm normal hints, and applies the new minimum size.
+ * If the window is not resizable, this function does nothing, and if the
+ * minimum size is already set to the measurements passed, this function does
+ * nothing.
+ *
+ * @param window The window to set the minimum size of.
+ * @param width The minimum width of the window.
+ * @param height The minimum height of the window.
+ *
+ * @pre @c window must be valid and created by @ref bread_window_new().
+ */
+static void x11_set_min_size(bread_window_t *window, u16 width, u16 height) {
+  x11_state_t *state = window->backend;
+  if (!state)
+    return;
+
+  if ((width == window->min_width && height == window->min_height) ||
+      (width == 0 && height == 0))
+    return;
+
+  xcb_get_property_cookie_t cookie =
+      xcb_icccm_get_wm_normal_hints(state->connection, state->xcb_window);
+
+  xcb_size_hints_t hints = {0};
+  uint8_t got = xcb_icccm_get_wm_normal_hints_reply(state->connection, cookie,
+                                                    &hints, NULL);
+
+  if (got) {
+    hints.flags &= ~XCB_ICCCM_SIZE_HINT_P_MIN_SIZE;
+  } else {
+    hints.flags = 0;
+  }
+
+  if (width > 0 || height > 0) {
+    hints.flags |= XCB_ICCCM_SIZE_HINT_P_MIN_SIZE;
+    if (width > 0)
+      hints.min_width = width;
+    if (height > 0)
+      hints.min_height = height;
+  }
+
+  window->min_width = width;
+  window->min_height = height;
+
+  xcb_icccm_set_wm_normal_hints(state->connection, state->xcb_window, &hints);
+  xcb_flush(state->connection);
+}
+
+/**
+ * @brief Get the X11 backend.
+ *
+ * @details Supplies the methods for the X11 backend.
+ *
+ * @param init The init function.
+ * @param poll_events The poll events function.
+ * @param should_close The should close function.
+ * @param destroy The destroy function.
+ * @param get_surface The get surface function.
+ * @param set_title The set title function.
+ * @param set_min_size The set min size function.
+ * @param backend_type The backend type which is BREAD_BACKEND_X11.
+ */
+
 const bread_backend_vtable_t bread_x11_backend = {
     .init = x11_init,
     .poll_events = x11_poll_events,
     .should_close = x11_should_close,
     .destroy = x11_destroy,
     .get_surface = x11_get_surface,
+    .set_title = x11_set_title,
+    .set_min_size = x11_set_min_size,
     .backend_type = BREAD_BACKEND_X11,
 };
 #endif // !BREAD_X11

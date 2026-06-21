@@ -5,13 +5,20 @@
 #include <htils/basictypes.h>
 #include <htils/string.h>
 
-/// surface.h
+/**
+ * @brief The window surface.
+ *
+ * @param handle The handle of the window surface.
+ * @param display The display of the window surface.
+ */
 typedef struct bread_surface {
   void *handle;
   void *display;
 } bread_surface_t;
 
-/// input.h
+/**
+ * @brief A bread key map.
+ */
 typedef enum bread_key {
   BREAD_KEY_UNKNOWN = 0,
 
@@ -145,7 +152,11 @@ typedef enum bread_key {
   BREAD_KEY_MAX
 } bread_key_t;
 
-/// input.h
+/**
+ * @brief A bread mouse button map.
+ *
+ * @note BUTTON_4 and BUTTON_5 are usually the side buttons on a mouse.
+ */
 typedef enum bread_mouse_button {
   BREAD_MOUSE_BUTTON_LEFT,
   BREAD_MOUSE_BUTTON_RIGHT,
@@ -155,7 +166,16 @@ typedef enum bread_mouse_button {
   BREAD_MOUSE_BUTTON_MAX
 } bread_mouse_button_t;
 
-/// input.h
+/**
+ * @brief The input state of the window.
+ *
+ * @param keys The state of the keys.
+ * @param mouse_buttons The state of the mouse buttons.
+ * @param mouse_x The current mouse x position.
+ * @param mouse_y The current mouse y position.
+ * @param scroll_x The current scroll x position.
+ * @param scroll_y The current scroll y position.
+ */
 typedef struct {
   b32 keys[BREAD_KEY_MAX];
   b32 mouse_buttons[BREAD_MOUSE_BUTTON_MAX];
@@ -165,7 +185,21 @@ typedef struct {
   f64 scroll_y;
 } bread_input_state_t;
 
-/// event.h
+/**
+ * @brief The event type of the window.
+ *
+ * @param BREAD_EVENT_NONE No event.
+ * @param BREAD_EVENT_WINDOW_CLOSE The window was closed.
+ * @param BREAD_EVENT_WINDOW_RESIZE The window was resized.
+ * @param BREAD_EVENT_KEY_PRESS A key was pressed.
+ * @param BREAD_EVENT_KEY_RELEASE A key was released.
+ * @param BREAD_EVENT_MOUSE_MOVE The mouse was moved.
+ * @param BREAD_EVENT_MOUSE_PRESS A mouse button was pressed.
+ * @param BREAD_EVENT_MOUSE_RELEASE A mouse button was released.
+ * @param BREAD_EVENT_MOUSE_SCROLL The mouse was scrolled.
+ *
+ * @note If any other events are needed, they'll be added here.
+ */
 typedef enum {
   BREAD_EVENT_NONE = 0,
   BREAD_EVENT_WINDOW_CLOSE,
@@ -178,7 +212,12 @@ typedef enum {
   BREAD_EVENT_MOUSE_SCROLL,
 } bread_event_type_t;
 
-/// event.h
+/**
+ * @brief An event of the window.
+ *
+ * @param type The type of the event.
+ * @param data The data of the event.
+ */
 typedef struct {
   bread_event_type_t type;
   union {
@@ -204,19 +243,52 @@ typedef struct {
   } data;
 } bread_event_t;
 
-/// backend.h
+/**
+ * @brief The backend type of the bread build.
+ *
+ * @param BREAD_BACKEND_WAYLAND The window is using the wayland backend.
+ * @param BREAD_BACKEND_X11 The window is using the X11 backend.
+ */
 typedef enum bread_backend {
   BREAD_BACKEND_WAYLAND,
   BREAD_BACKEND_X11,
 } bread_backend_type_t;
 
-/// event.h
+/**
+ * @brief The callback function signature for the window events.
+ *
+ * @param event The event that fired.
+ * @param userdata The userdata passed to the callback.
+ *
+ * @note This is passed to the @ref bread_window_set_event_callback() function.
+ */
 typedef void (*bread_event_callback_t)(bread_event_t *event, void *userdata);
 
-/// window.h
+/**
+ * @brief The window struct.
+ *
+ * @param width The width of the window.
+ * @param height The height of the window.
+ *
+ * @param min_width The minimum width of the window.
+ * @param min_height The minimum height of the window.
+ *
+ * @param title The title of the window.
+ * @param class The class/app-id of the window.
+ *
+ * @param backend The current backend of the window.
+ * @param arena The arena of the window.
+ *
+ * @param event_callback The callback function for the window events.
+ * @param event_userdata The userdata passed to the callback function.
+ */
 typedef struct bread_window {
   u16 width;
   u16 height;
+
+  u16 min_width;
+  u16 min_height;
+
   string *title;
   string *class;
   void *backend;
@@ -226,17 +298,39 @@ typedef struct bread_window {
   void *event_userdata;
 } bread_window_t;
 
-/// backend.h
+/**
+ * @brief The backend vtable of the window, exposing the functionality of each
+ * backend, based on build.
+ *
+ * @param init The init function of the backend.
+ * @param poll_events The poll_events function of the backend.
+ * @param should_close The should_close function of the backend.
+ * @param destroy The destroy function of the backend.
+ * @param get_surface The get_surface function of the backend.
+ * @param set_title The set_title function of the backend.
+ * @param set_min_size The set_min_size function of the backend.
+ * @param backend_type The backend type of the bread build.
+ */
 typedef struct {
   void (*init)(bread_window_t *window);
   void (*poll_events)(bread_window_t *window);
   b32 (*should_close)(bread_window_t *window);
   void (*destroy)(bread_window_t *window);
   bread_surface_t (*get_surface)(bread_window_t *window);
+  void (*set_title)(bread_window_t *window, const char *title);
+  void (*set_min_size)(bread_window_t *window, u16 width, u16 height);
   bread_backend_type_t backend_type;
 } bread_backend_vtable_t;
 
-/// log.h
+/**
+ * @brief The log level of the bread build.
+ *
+ * @param BREAD_LOG_LEVEL_DEBUG Debug level.
+ * @param BREAD_LOG_LEVEL_INFO Info level.
+ * @param BREAD_LOG_LEVEL_WARN Warn level.
+ * @param BREAD_LOG_LEVEL_ERROR Error level.
+ * @param BREAD_LOG_LEVEL_FATAL Fatal level.
+ */
 typedef enum bread_log_level {
   BREAD_LOG_LEVEL_DEBUG,
   BREAD_LOG_LEVEL_INFO,

@@ -1,3 +1,5 @@
+#include <string.h>
+
 #include <xkbcommon/xkbcommon.h>
 
 #include <bread/input.h>
@@ -14,6 +16,9 @@
 
 #include <bread/event.h>
 
+/**
+ * @brief Maps evdev keycodes to bread keycodes.
+ */
 static const bread_key_t evdev_to_bread[] = {
     [0] = BREAD_KEY_UNKNOWN,
     [1] = BREAD_KEY_ESCAPE,
@@ -194,4 +199,65 @@ u32 bread_event_key_to_unicode(bread_window_t *window, bread_event_t *event) {
   return xkb_keysym_to_utf32(
       xkb_state_key_get_one_sym(state->xkb_state, keycode));
 #endif
+}
+
+/**
+ * @brief Convert a unicode codepoint to a UTF-8 string.
+ *
+ * @details Converts a unicode codepoint to a UTF-8 string, and returns the
+ * length by comparing the codepoint then converting through ors, rightshifts
+ * and ands.
+ *
+ * @param cp The unicode codepoint to convert.
+ * @param out The output buffer to write the UTF-8 string to.
+ *
+ * @pre @c out must be a valid pointer.
+ *
+ * @return The length of the UTF-8 string.
+ */
+static u64 unicode_to_utf8(u32 cp, cstr *out) {
+  if (cp > 0x10FFFF || (cp >= 0xD800 && cp <= 0xDFFF))
+    return 0;
+
+  if (cp <= 0x7F) {
+    out[0] = (char)cp;
+    out[1] = '\0';
+    return 1;
+  } else if (cp <= 0x7FF) {
+    out[0] = (char)(0xC0 | ((cp >> 6) & 0x1F));
+    out[1] = (char)(0x80 | (cp & 0x3F));
+    out[2] = '\0';
+    return 2;
+  } else if (cp <= 0xFFFF) {
+    out[0] = (char)(0xE0 | ((cp >> 12) & 0x0F));
+    out[1] = (char)(0x80 | ((cp >> 6) & 0x3F));
+    out[2] = (char)(0x80 | (cp & 0x3F));
+    out[3] = '\0';
+    return 3;
+  } else {
+    out[0] = (char)(0xF0 | ((cp >> 18) & 0x07));
+    out[1] = (char)(0x80 | ((cp >> 12) & 0x3F));
+    out[2] = (char)(0x80 | ((cp >> 6) & 0x3F));
+    out[3] = (char)(0x80 | (cp & 0x3F));
+    out[4] = '\0';
+    return 4;
+  }
+}
+
+cstr *bread_key_to_cstr(bread_window_t *window, bread_event_t *event) {
+  u32 unicode = bread_event_key_to_unicode(window, event);
+  if (unicode == 0)
+    return 0;
+
+  arena_t *arena = window->arena;
+
+  cstr buf[5];
+  u64 ret = 0;
+  if ((ret = unicode_to_utf8(unicode, buf)) == 0)
+    return 0;
+
+  cstr *str = arena_alloc(arena, cstr, ret + 1);
+  memcpy(str, buf, ret);
+
+  return str;
 }

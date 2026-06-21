@@ -28,6 +28,16 @@ void bread_window_init(bread_window_t *window) {
   get_backend_vtable()->init(window);
 }
 
+void bread_window_set_title(bread_window_t *window, const char *title) {
+  bread_log_debug("Setting window title to '%s'", title);
+  get_backend_vtable()->set_title(window, title);
+}
+
+void bread_window_set_min_size(bread_window_t *window, u16 width, u16 height) {
+  bread_log_debug("Setting window min size to %ux%u", width, height);
+  get_backend_vtable()->set_min_size(window, width, height);
+}
+
 void bread_window_poll(bread_window_t *window) {
   get_backend_vtable()->poll_events(window);
 }
@@ -39,6 +49,15 @@ b32 bread_window_should_close(bread_window_t *window) {
 void bread_window_destroy(bread_window_t *window) {
   bread_log_debug("Destroying window");
   get_backend_vtable()->destroy(window);
+}
+
+void bread_window_clamp_size(bread_window_t *window, u32 *width, u32 *height) {
+  if (!window || !width || !height)
+    return;
+  if (*width < window->min_width)
+    *width = window->min_width;
+  if (*height < window->min_height)
+    *height = window->min_height;
 }
 
 bread_surface_t bread_window_get_surface(bread_window_t *window) {
