@@ -406,7 +406,7 @@ static bread_surface_t x11_get_surface(bread_window_t *window) {
  *
  * @details Updates the WM_NAME and the _NET_WM_NAME if available.
  *
- * @param window The window to set the title of.
+ * @param window The window to set the title of.
  * @param title The title to set.
  *
  * @pre
