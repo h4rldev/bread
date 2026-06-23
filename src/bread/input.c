@@ -244,7 +244,7 @@ static u64 unicode_to_utf8(u32 cp, cstr *out) {
   }
 }
 
-cstr *bread_key_to_cstr(bread_window_t *window, bread_event_t *event) {
+cstr *bread_event_key_to_cstr(bread_window_t *window, bread_event_t *event) {
   u32 unicode = bread_event_key_to_unicode(window, event);
   if (unicode == 0)
     return 0;

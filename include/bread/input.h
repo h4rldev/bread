@@ -43,7 +43,7 @@ bread_input_state_t bread_window_get_input(bread_window_t *window);
 u32 bread_event_key_to_unicode(bread_window_t *window, bread_event_t *event);
 
 /**
- * @brief Convert a bread key to a C-string.
+ * @brief Convert a bread event key to a C-string.
  *
  * @details Usually used if you wanna represent a BREAD_KEY as a C-String to
  * then enter into text for UI, less flexible than @ref
@@ -60,7 +60,7 @@ u32 bread_event_key_to_unicode(bread_window_t *window, bread_event_t *event);
  * @return The C-string representation of the key, or nullif the key wasn't a
  * valid key.
  */
-cstr *bread_key_to_cstr(bread_window_t *window, bread_event_t *event);
+cstr *bread_event_key_to_cstr(bread_window_t *window, bread_event_t *event);
 
 //
 //
