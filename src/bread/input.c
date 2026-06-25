@@ -249,14 +249,12 @@ cstr *bread_event_key_to_cstr(bread_window_t *window, bread_event_t *event) {
   if (unicode == 0)
     return 0;
 
-  arena_t *arena = window->arena;
-
   cstr buf[5];
   u64 ret = 0;
   if ((ret = unicode_to_utf8(unicode, buf)) == 0)
     return 0;
 
-  cstr *str = arena_alloc(arena, cstr, ret + 1);
+  static cstr str[5];
   memcpy(str, buf, ret);
 
   return str;
