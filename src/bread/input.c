@@ -256,6 +256,7 @@ cstr *bread_event_key_to_cstr(bread_window_t *window, bread_event_t *event) {
 
   static cstr str[5];
   memcpy(str, buf, ret);
+  str[ret] = '\0';
 
   return str;
 }
