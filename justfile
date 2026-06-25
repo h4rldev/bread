@@ -22,7 +22,7 @@ bread_out := out + '/bread'
 ## General flags
 
 include_flags := '-I' + include
-link_flags := '-lhtils -Llib'
+link_flags := '-lhtils -Llib ' + lib
 
 ## Shared flags
 
@@ -31,8 +31,10 @@ shared_flags_release := '-O2 -std=gnu11'
 
 ## Link flags
 
-wayland_link_flags := shared_flags_debug + ' -lwayland-client -lxkbcommon -lbread-wayland-debug ' + link_flags
-x11_link_flags := shared_flags_debug + ' -lxkbcommon -lxkbcommon-x11 -lxcb -lxcb-icccm -lxcb-randr -lbread-x11-debug ' + link_flags
+release_wayland_link_flags := shared_flags_debug + ' -lwayland-client -lxkbcommon -lbread-wayland-release ' + link_flags
+debug_wayland_link_flags := shared_flags_debug + ' -lwayland-client -lxkbcommon -lbread-wayland-debug ' + link_flags
+debug_x11_link_flags := shared_flags_debug + ' -lxkbcommon -lxkbcommon-x11 -lxcb -lxcb-icccm -lxcb-randr -lbread-x11-debug ' + link_flags
+release_x11_link_flags := shared_flags_debug + ' -lxkbcommon -lxkbcommon-x11 -lxcb -lxcb-icccm -lxcb-randr -lbread-x11-release ' + link_flags
 
 ## Static link flags
 
@@ -297,7 +299,7 @@ compile-test platform="wayland" force="dont_force" threads=num_cpus():
 
     echo -e "Compile (test): Compiling {{ green }}{{ platform }}{{ reset }} complete"
 
-link-test platform="wayland" force="dont_force":
+link-test platform="wayland" target="debug" force="dont_force":
     #!/usr/bin/env bash
     shopt -s globstar
 
@@ -310,10 +312,18 @@ link-test platform="wayland" force="dont_force":
 
     CURRENT_PLATFORM_LINK_FLAGS=""
 
-    if [[ {{ platform }} == "wayland" ]]; then
-      CURRENT_PLATFORM_LINK_FLAGS="{{ wayland_link_flags }}"
+    if [[ {{ target }} == "release" ]]; then
+      if [[ {{ platform }} == "wayland" ]]; then
+        CURRENT_PLATFORM_LINK_FLAGS="{{ release_wayland_link_flags }}"
+      else
+        CURRENT_PLATFORM_LINK_FLAGS="{{ release_x11_link_flags }}"
+      fi
     else
-      CURRENT_PLATFORM_LINK_FLAGS="{{ x11_link_flags }}"
+      if [[ {{ platform }} == "wayland" ]]; then
+        CURRENT_PLATFORM_LINK_FLAGS="{{ debug_wayland_link_flags }}"
+      else
+        CURRENT_PLATFORM_LINK_FLAGS="{{ debug_x11_link_flags }}"
+      fi
     fi
 
     export CURRENT_PLATFORM_LINK_FLAGS
@@ -358,10 +368,10 @@ build-bread platform="wayland" target="debug" force="false" static="dynamic" thr
     just assemble-bread {{ platform }} {{ target }} {{ static }} {{ force }}
 
 build-test platform="wayland" target="debug" force="false" threads=num_cpus():
-    just debug {{ platform }} {{ force }} {{ threads }}
+    just {{ target }} {{ platform }} {{ force }} {{ threads }}
 
     just compile-test {{ platform }} {{ force }} {{ threads }}
-    just link-test {{ platform }}
+    just link-test {{ platform }} {{ target }}
 
 release platform="wayland" force="false" static="dynamic" threads=num_cpus():
     just build-bread {{ platform }} release {{ force }} {{ static }}  {{ threads }}
