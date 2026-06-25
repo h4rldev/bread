@@ -68,6 +68,15 @@ static void x11_state_cleanup(x11_state_t *state) {
     bread_log_debug("Disconnecting from X server");
     xcb_disconnect(state->connection);
   }
+
+  if (state->xkb_context)
+    xkb_context_unref(state->xkb_context);
+
+  if (state->xkb_keymap)
+    xkb_keymap_unref(state->xkb_keymap);
+
+  if (state->xkb_state)
+    xkb_state_unref(state->xkb_state);
 }
 
 /**
@@ -378,6 +387,7 @@ static void x11_destroy(bread_window_t *window) {
   }
 
   x11_state_cleanup(state);
+
   window->backend = NULL;
 }
 
