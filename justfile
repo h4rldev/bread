@@ -32,7 +32,7 @@ shared_flags_release := '-O2 -std=gnu11'
 ## Link flags
 
 wayland_link_flags := shared_flags_debug + ' -lwayland-client -lxkbcommon -lbread-wayland-debug ' + link_flags
-x11_link_flags := shared_flags_debug + ' -lxkbcommon -lxkbcommon-x11 -lxcb -lxcb-randr -lbread-x11-debug ' + link_flags
+x11_link_flags := shared_flags_debug + ' -lxkbcommon -lxkbcommon-x11 -lxcb -lxcb-icccm -lxcb-randr -lbread-x11-debug ' + link_flags
 
 ## Static link flags
 
