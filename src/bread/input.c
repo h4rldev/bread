@@ -8,10 +8,12 @@
 
 #if BREAD_WAYLAND
 #include <bread/wayland/wayland.h>
+#include <bread/wayland/wayland_input.h>
 #endif
 
 #if BREAD_X11
 #include <bread/x11/x11.h>
+#include <bread/x11/x11_input.h>
 #endif
 
 #include <bread/event.h>
@@ -259,4 +261,61 @@ cstr *bread_event_key_to_cstr(bread_window_t *window, bread_event_t *event) {
   str[ret] = '\0';
 
   return str;
+}
+
+void bread_cursor_init(bread_window_t *window) {
+#if BREAD_WAYLAND
+  wl_state_t *state = window->backend;
+  if (!state)
+    return;
+
+  bread_wayland_cursor_init(state);
+#elif BREAD_X11
+  x11_state_t *state = window->backend;
+  if (!state)
+    return;
+
+  bread_x11_cursor_init(state);
+#else
+  bread_log_warn("No cursor support for this platform");
+  return;
+#endif
+}
+
+void bread_cursor_cleanup(bread_window_t *window) {
+#if BREAD_WAYLAND
+  wl_state_t *state = window->backend;
+  if (!state)
+    return;
+  bread_wayland_cursor_cleanup(state);
+#elif BREAD_X11
+  x11_state_t *state = window->backend;
+  if (!state)
+    return;
+  bread_x11_cursor_cleanup(state);
+#else
+  bread_log_warn("No cursor support for this platform");
+  return;
+#endif
+}
+
+void bread_set_cursor(bread_window_t *window, bread_cursor_type_t cursor) {
+#if BREAD_WAYLAND
+  wl_state_t *state = window->backend;
+  if (!state)
+    return;
+  if (state->cursor_theme)
+    return;
+  bread_wayland_set_cursor(state, cursor);
+#elif BREAD_X11
+  x11_state_t *state = window->backend;
+  if (!state)
+    return;
+  if (state->cursor_context)
+    return;
+  bread_x11_set_cursor(state, cursor);
+#else
+  bread_log_warn("No cursor support for this platform");
+  return;
+#endif
 }

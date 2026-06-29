@@ -186,6 +186,39 @@ typedef struct {
 } bread_input_state_t;
 
 /**
+ * @brief The cursor type.
+ *
+ * @param BREAD_CURSOR_DEFAULT The default cursor (pointer).
+ * @param BREAD_CURSOR_POINTER The pointer cursor (default).
+ * @param BREAD_CURSOR_HAND The hand cursor.
+ * @param BREAD_CURSOR_TEXT The text cursor.
+ * @param BREAD_CURSOR_MOVE The move cursor.
+ * @param BREAD_CURSOR_RESIZE_EW The horizontal resize cursor (east-west).
+ * @param BREAD_CURSOR_RESIZE_NS The vertical resize cursor (north-south).
+ * @param BREAD_CURSOR_RESIZE_NESW The diagonal resize cursor
+ * (northeast-southwest).
+ * @param BREAD_CURSOR_RESIZE_NWSE The anti-diagonal resize cu<rsor
+ * (northwest-southeast).
+ * @param BREAD_CURSOR_NOT_ALLOWED The not allowed cursor.
+ * @param BREAD_CURSOR_WAIT The wait cursor.
+ * @param BREAD_CURSOR_MAX The maximum cursor type, used for bounds checking.
+ */
+typedef enum bread_cursor_type {
+  BREAD_CURSOR_DEFAULT = 0,
+  BREAD_CURSOR_POINTER = 0,
+  BREAD_CURSOR_HAND,
+  BREAD_CURSOR_TEXT,
+  BREAD_CURSOR_MOVE,
+  BREAD_CURSOR_RESIZE_EW,
+  BREAD_CURSOR_RESIZE_NS,
+  BREAD_CURSOR_RESIZE_NESW,
+  BREAD_CURSOR_RESIZE_NWSE,
+  BREAD_CURSOR_NOT_ALLOWED,
+  BREAD_CURSOR_WAIT,
+  BREAD_CURSOR_MAX
+} bread_cursor_type_t;
+
+/**
  * @brief The event type of the window.
  *
  * @param BREAD_EVENT_NONE No event.

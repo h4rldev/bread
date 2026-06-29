@@ -5,6 +5,7 @@
 
 #include <htils/basictypes.h>
 #include <wayland-client.h>
+#include <wayland-cursor.h>
 #include <xkbcommon/xkbcommon.h>
 
 #include <wayland/xdg-decoration-client-protocol.h>
@@ -24,6 +25,9 @@ typedef struct wl_registry wl_registry_t;
 typedef struct wl_seat wl_seat_t;
 typedef struct wl_keyboard wl_keyboard_t;
 typedef struct wl_pointer wl_pointer_t;
+typedef struct wl_cursor_theme wl_cursor_theme_t;
+typedef struct wl_cursor wl_cursor_t;
+typedef struct wl_cursor_image wl_cursor_image_t;
 typedef struct wl_array wl_array_t;
 typedef struct wl_output wl_output_t;
 
@@ -79,6 +83,12 @@ typedef struct {
   b32 running;
 
   bread_input_state_t input;
+
+  wl_cursor_theme_t *cursor_theme;
+  wl_cursor_t *cursors[BREAD_CURSOR_MAX];
+  wl_cursor_t *current_cursor;
+  wl_surface_t *cursor_surface;
+  u32 pointer_serial;
 } wl_state_t;
 
 #endif // !BREAD_WAYLAND

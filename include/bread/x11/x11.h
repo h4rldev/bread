@@ -6,6 +6,7 @@
 
 #include <htils/basictypes.h>
 #include <xcb/xcb.h>
+#include <xcb/xcb_cursor.h>
 #include <xkbcommon/xkbcommon.h>
 
 #include <bread/input.h>
@@ -33,6 +34,10 @@ typedef struct {
   xkb_keymap_t *xkb_keymap;
   xkb_state_t *xkb_state;
   i32 xkb_device_id;
+
+  xcb_cursor_context_t *cursor_context;
+  xcb_cursor_t current_cursor;
+  xcb_cursor_t cursors[BREAD_CURSOR_MAX];
 
   bread_input_state_t input;
 } x11_state_t;

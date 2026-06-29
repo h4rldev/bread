@@ -1,4 +1,5 @@
 #include <bread/backend.h>
+#include <bread/input.h>
 #include <bread/log.h>
 #include <bread/types.h>
 #include <bread/window.h>
@@ -26,6 +27,7 @@ static const bread_backend_vtable_t *get_backend_vtable(void) {
 void bread_window_init(bread_window_t *window) {
   bread_log_debug("Initializing window");
   get_backend_vtable()->init(window);
+  bread_cursor_init(window);
 }
 
 void bread_window_set_title(bread_window_t *window, const char *title) {
@@ -49,6 +51,7 @@ b32 bread_window_should_close(bread_window_t *window) {
 void bread_window_destroy(bread_window_t *window) {
   bread_log_debug("Destroying window");
   get_backend_vtable()->destroy(window);
+  bread_cursor_cleanup(window);
 }
 
 void bread_window_clamp_size(bread_window_t *window, u32 *width, u32 *height) {

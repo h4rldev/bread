@@ -62,6 +62,26 @@ u32 bread_event_key_to_unicode(bread_window_t *window, bread_event_t *event);
  */
 cstr *bread_event_key_to_cstr(bread_window_t *window, bread_event_t *event);
 
+void bread_cursor_init(bread_window_t *window);
+
+void bread_cursor_cleanup(bread_window_t *window);
+
+/**
+ * @brief Set the current pointer cursor
+ *
+ * @details Changes the cursor's icon based on platform, for either X11 of
+ * Wayland.
+ *
+ * @param window The window to set the cursor for.
+ * @param cursor The cursor to set.
+ *
+ * @pre @c window must be a valid pointer and properly initialized through @ref
+ * bread_window_init().
+ *
+ * @note The cursor is set to the default cursor if the cursor type is invalid.
+ */
+void bread_set_cursor(bread_window_t *window, bread_cursor_type_t cursor);
+
 //
 //
 //

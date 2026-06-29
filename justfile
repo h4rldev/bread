@@ -1,5 +1,5 @@
 set shell := ["bash", "-c"]
-set quiet := true
+set quiet := false
 
 ## Metadata
 
@@ -22,7 +22,7 @@ bread_out := out + '/bread'
 ## General flags
 
 include_flags := '-I' + include
-link_flags := '-lhtils -Llib ' + lib
+link_flags := '-lhtils -L' + lib
 
 ## Shared flags
 
@@ -31,10 +31,10 @@ shared_flags_release := '-O2 -std=gnu11'
 
 ## Link flags
 
-release_wayland_link_flags := shared_flags_debug + ' -lwayland-client -lxkbcommon -lbread-wayland-release ' + link_flags
-debug_wayland_link_flags := shared_flags_debug + ' -lwayland-client -lxkbcommon -lbread-wayland-debug ' + link_flags
-debug_x11_link_flags := shared_flags_debug + ' -lxkbcommon -lxkbcommon-x11 -lxcb -lxcb-icccm -lxcb-randr -lbread-x11-debug ' + link_flags
-release_x11_link_flags := shared_flags_debug + ' -lxkbcommon -lxkbcommon-x11 -lxcb -lxcb-icccm -lxcb-randr -lbread-x11-release ' + link_flags
+release_wayland_link_flags := shared_flags_debug + ' -lwayland-client -lwayland-cursor -lxkbcommon -lbread-wayland-release ' + link_flags
+debug_wayland_link_flags := shared_flags_debug + ' -lwayland-client -lwayland-cursor -lxkbcommon -lbread-wayland-debug ' + link_flags
+debug_x11_link_flags := shared_flags_debug + ' -lxkbcommon -lxkbcommon-x11 -lxcb -lxcb-icccm -lxcb-cursor -lxcb-randr -lbread-x11-debug ' + link_flags
+release_x11_link_flags := shared_flags_debug + ' -lxkbcommon -lxkbcommon-x11 -lxcb -lxcb-icccm -lxcb-cursor -lxcb-randr -lbread-x11-release ' + link_flags
 
 ## Static link flags
 
@@ -346,6 +346,7 @@ link-test platform="wayland" target="debug" force="dont_force":
     }
 
     link() {
+      set -x
       echo -e "Link (test):"
       echo -e "Platform: {{ green }}{{ platform }}{{ reset }}"
 

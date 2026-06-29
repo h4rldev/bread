@@ -190,7 +190,7 @@
           wayland-scanner
           pkg-config
           gcc
-          libx11
+          libxcb-cursor
           libxcb
           libxcb-wm
           libxkbcommon
@@ -217,7 +217,7 @@
           mkdir -p include/wayland
           mkdir -p src/wayland
 
-          export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:${pkgs.gcc.cc.lib}/lib:${pkgs.libxcb}/lib:${pkgs.libxcb-wm}/lib"
+          export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:${pkgs.gcc.cc.lib}/lib:${pkgs.libxcb}/lib:${pkgs.libxcb-wm}/lib:${pkgs.libxcb-cursor}/lib"
           export NIX_LDFLAGS="-rpath ${htils.packages.${system}.htils}/lib -rpath ${pkgs.libxcb}/lib -rpath ${pkgs.libxcb-wm}/lib  $NIX_LDFLAGS"
 
 

@@ -2,6 +2,7 @@
 
 #if BREAD_WAYLAND
 
+#include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
 #include <unistd.h>
@@ -218,14 +219,20 @@ static void pointer_enter(void *data, wl_pointer_t *pointer, u32 serial,
   state->input.mouse_y = wl_fixed_to_double(surface_y);
   bread_log_debug("Pointer entered is now at (%f, %f)", state->input.mouse_x,
                   state->input.mouse_y);
+
+  state->pointer_serial = serial;
+  bread_wayland_set_cursor(state, BREAD_CURSOR_DEFAULT);
 }
 
 /**
  * @brief Handles the pointer leave event.
- * @details Noop because we don't need to handle pointer_leave.
+ * @details Only updates the pointer serial, and is otherwise noop.
  */
 static void pointer_leave(void *data, wl_pointer_t *pointer, u32 serial,
-                          wl_surface_t *surface) {}
+                          wl_surface_t *surface) {
+  wl_state_t *state = data;
+  state->pointer_serial = serial;
+}
 
 /**
  * @brief Handles the pointer motion event.
@@ -292,6 +299,7 @@ static void pointer_button(void *data, wl_pointer_t *pointer, u32 serial,
   bread_log_debug("Got mouse button %d", bread_button);
   b32 pressed = pointer_state == WL_POINTER_BUTTON_STATE_PRESSED;
   state->input.mouse_buttons[bread_button] = pressed;
+  state->pointer_serial = serial;
 
   bread_log_debug("Emitting mouse button press");
   bread_event_t event = {
@@ -482,4 +490,116 @@ void bread_wayland_seat_cleanup(wl_state_t *state) {
   bread_log_debug("Unrefing xkb context");
   xkb_context_unref(state->xkb_context);
 }
+
+static const cstr *cursor_names[] = {
+    [0] = "default",
+    [BREAD_CURSOR_HAND] = "grabbing",
+    [BREAD_CURSOR_TEXT] = "text",
+    [BREAD_CURSOR_MOVE] = "move",
+    [BREAD_CURSOR_RESIZE_EW] = "ew-resize",
+    [BREAD_CURSOR_RESIZE_NS] = "ns-resize",
+    [BREAD_CURSOR_RESIZE_NESW] = "nesw-resize",
+    [BREAD_CURSOR_RESIZE_NWSE] = "nwse-resize",
+    [BREAD_CURSOR_NOT_ALLOWED] = "not-allowed",
+    [BREAD_CURSOR_WAIT] = "wait",
+};
+
+static const char *cursor_fallbacks[] = {
+    [0] = "left_ptr",
+    [BREAD_CURSOR_HAND] = "hand2",
+    [BREAD_CURSOR_TEXT] = "xterm",
+    [BREAD_CURSOR_MOVE] = "fleur",
+    [BREAD_CURSOR_RESIZE_EW] = "sb_h_double_arrow",
+    [BREAD_CURSOR_RESIZE_NS] = "sb_v_double_arrow",
+    [BREAD_CURSOR_RESIZE_NESW] = "fd_double_arrow",
+    [BREAD_CURSOR_RESIZE_NWSE] = "bd_double_arrow",
+    [BREAD_CURSOR_NOT_ALLOWED] = "x_cursor",
+    [BREAD_CURSOR_WAIT] = "watch",
+};
+
+void bread_wayland_cursor_init(wl_state_t *state) {
+  const cstr *cursor_theme = getenv("HYPRCURSOR_THEME");
+  if (!cursor_theme || !*cursor_theme) {
+    cursor_theme = getenv("XCURSOR_THEME");
+    if (!cursor_theme || !*cursor_theme)
+      cursor_theme = "default";
+  }
+
+  i32 size = 24;
+  const cstr *size_env = getenv("HYPRCURSOR_SIZE");
+  if (!size_env && !*size_env) {
+    size_env = getenv("XCURSOR_SIZE");
+    if (size_env || *size_env) {
+      cstr *endp;
+      strtol(size_env, &endp, 10);
+      if (size_env == endp)
+        size = 24;
+    }
+  }
+
+  state->cursor_theme = wl_cursor_theme_load(cursor_theme, size, state->shm);
+  if (!state->cursor_theme) {
+    state->cursor_theme = wl_cursor_theme_load("default", size, state->shm);
+    if (!state->cursor_theme)
+      return;
+  }
+
+  for (u32 i = 0; i < BREAD_CURSOR_MAX; i++) {
+    state->cursors[i] =
+        wl_cursor_theme_get_cursor(state->cursor_theme, cursor_names[i]);
+    if (!state->cursors[i]) {
+      bread_log_warn("Failed to load cursor %s, falling back to %s",
+                     cursor_names[i], cursor_fallbacks[i]);
+      state->cursors[i] =
+          wl_cursor_theme_get_cursor(state->cursor_theme, cursor_fallbacks[i]);
+    }
+  }
+
+  state->cursor_surface = wl_compositor_create_surface(state->compositor);
+  if (!state->cursor_surface) {
+    bread_log_warn("Failed to create cursor surface, using main surface, "
+                   "expect weirdness");
+    state->cursor_surface = state->wl_surface;
+  }
+
+  state->current_cursor = state->cursors[BREAD_CURSOR_DEFAULT];
+}
+
+void bread_wayland_cursor_cleanup(wl_state_t *state) {
+  if (state->cursor_theme)
+    wl_cursor_theme_destroy(state->cursor_theme);
+
+  if (state->cursor_surface && state->cursor_surface != state->wl_surface)
+    wl_surface_destroy(state->cursor_surface);
+
+  state->cursor_theme = null;
+  state->cursor_surface = null;
+}
+
+void bread_wayland_set_cursor(wl_state_t *state, bread_cursor_type_t cursor) {
+  if (!state->cursor_theme)
+    return;
+
+  wl_cursor_t *new_cursor = state->cursors[cursor];
+  if (!new_cursor)
+    return;
+  if (new_cursor == state->current_cursor)
+    return;
+
+  wl_cursor_image_t *image = new_cursor->images[0];
+  wl_buffer_t *buffer = wl_cursor_image_get_buffer(image);
+  if (!buffer)
+    return;
+
+  wl_pointer_set_cursor(state->pointer, state->pointer_serial,
+                        state->cursor_surface, image->hotspot_x,
+                        image->hotspot_y);
+
+  wl_surface_attach(state->cursor_surface, buffer, 0, 0);
+  wl_surface_damage(state->cursor_surface, 0, 0, image->width, image->height);
+  wl_surface_commit(state->cursor_surface);
+
+  state->current_cursor = new_cursor;
+}
+
 #endif // !BREAD_WAYLAND
