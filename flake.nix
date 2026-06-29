@@ -119,6 +119,7 @@
           pkgs.just
           pkgs.gcc
           pkgs.libxcb
+          pkgs.libxcb-cursor
           pkgs.libxcb-wm
           pkgs.libxkbcommon
           htils.packages.${system}.htils
@@ -156,6 +157,7 @@
           pkgs.just
           pkgs.gcc
           pkgs.libxcb
+          pkgs.libxcb-cursor
           pkgs.libxcb-wm
           pkgs.libxkbcommon
           htils.packages.${system}.htils
