@@ -533,7 +533,7 @@ void bread_wayland_cursor_init(wl_state_t *state) {
     size_env = getenv("XCURSOR_SIZE");
     if (size_env || *size_env) {
       cstr *endp;
-      strtol(size_env, &endp, 10);
+      size = strtol(size_env, &endp, 10);
       if (size_env == endp)
         size = 24;
     }
