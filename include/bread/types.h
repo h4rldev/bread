@@ -205,7 +205,7 @@ typedef struct {
  */
 typedef enum bread_cursor_type {
   BREAD_CURSOR_DEFAULT = 0,
-  BREAD_CURSOR_POINTER = 0,
+  BREAD_CURSOR_POINTER,
   BREAD_CURSOR_HAND,
   BREAD_CURSOR_TEXT,
   BREAD_CURSOR_MOVE,
