@@ -302,17 +302,25 @@ void bread_cursor_cleanup(bread_window_t *window) {
 void bread_set_cursor(bread_window_t *window, bread_cursor_type_t cursor) {
 #if BREAD_WAYLAND
   wl_state_t *state = window->backend;
-  if (!state)
+  if (!state) {
+    bread_log_warn("No wayland state, can't set cursor");
     return;
-  if (state->cursor_theme)
+  }
+  if (!state->cursor_theme) {
+    bread_log_warn("No cursor theme, can't set cursor");
     return;
+  }
   bread_wayland_set_cursor(state, cursor);
 #elif BREAD_X11
   x11_state_t *state = window->backend;
-  if (!state)
+  if (!state) {
+    bread_log_warn("No x11 state, can't set cursor");
     return;
-  if (state->cursor_context)
+  }
+  if (!state->cursor_context) {
+    bread_log_warn("No cursor context, can't set cursor");
     return;
+  }
   bread_x11_set_cursor(state, cursor);
 #else
   bread_log_warn("No cursor support for this platform");
