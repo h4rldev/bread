@@ -531,11 +531,16 @@ void bread_wayland_cursor_init(wl_state_t *state) {
   const cstr *size_env = getenv("HYPRCURSOR_SIZE");
   if (!size_env && !*size_env) {
     size_env = getenv("XCURSOR_SIZE");
-    if (size_env || *size_env) {
-      cstr *endp;
-      size = strtol(size_env, &endp, 10);
-      if (size_env == endp)
-        size = 24;
+    if (!size_env || !*size_env)
+      bread_log_error("Failed to get cursor size, defaulting to 24");
+  }
+
+  if (size_env) {
+    cstr *endp;
+    size = strtol(size_env, &endp, 10);
+    if (size_env == endp) {
+      bread_log_error("Failed to parse cursor size '%s'", size_env);
+      size = 24;
     }
   }
 
