@@ -1,6 +1,5 @@
 #include <stdarg.h>
 #include <stdio.h>
-#include <string.h>
 #include <threads.h>
 
 #include <htils/arena.h>
@@ -17,10 +16,41 @@
 #define COLOR_BLUE "\x1b[34m"
 #define COLOR_CYAN "\x1b[36m"
 
-static thread_local cstr last_level[20] = {0};
-static thread_local cstr last_msg[4096] = {0};
-static thread_local u64 repeat_count = 0;
-static thread_local b32 has_printed = false;
+#define BREAD_LOG_HISTORY_SIZE 256
+
+typedef struct {
+  u64 hash;
+  u64 count;
+} bread_log_entry_t;
+
+static thread_local bread_log_entry_t history[BREAD_LOG_HISTORY_SIZE] = {0};
+static thread_local u32 history_count = 0;
+static thread_local u64 last_hash = 0;
+static thread_local b32 line_active = false;
+
+static u64 bread_log_hash(const cstr *level, const cstr *msg) {
+  u64 h = 0xcbf29ce484222325ULL;
+  for (const cstr *p = level; *p; p++)
+    h = (h ^ (u64)(u8)*p) * 0x100000001b3ULL;
+  for (const cstr *p = msg; *p; p++)
+    h = (h ^ (u64)(u8)*p) * 0x100000001b3ULL;
+  return h;
+}
+
+static bread_log_entry_t *bread_log_find(u64 hash) {
+  for (u32 i = 0; i < history_count; i++) {
+    if (history[i].hash == hash)
+      return &history[i];
+  }
+  u32 idx = history_count;
+  if (idx >= BREAD_LOG_HISTORY_SIZE)
+    idx = 0;
+  history[idx].hash = hash;
+  history[idx].count = 0;
+  if (idx == history_count)
+    history_count++;
+  return &history[idx];
+}
 
 void bread_log(bread_log_level_t level, cstr *fmt, ...) {
 #ifndef BREAD_DEBUG
@@ -54,23 +84,29 @@ void bread_log(bread_log_level_t level, cstr *fmt, ...) {
   vsnprintf(fmt_str, 4096, fmt, args);
   va_end(args);
 
-  if (memcmp(last_level, level_str, 20) == 0 &&
-      memcmp(last_msg, fmt_str, 4096) == 0) {
-    repeat_count++;
-    fprintf(stderr, "\r[BREAD] %s: %s [x%lu]", level_str, fmt_str,
-            repeat_count + 1);
-    fflush(stderr);
-    has_printed = true;
+  u64 hash = bread_log_hash(level_str, fmt_str);
+  bread_log_entry_t *entry = bread_log_find(hash);
+  entry->count++;
+
+  if (hash == last_hash && line_active) {
+    if (entry->count >= 2) {
+      fprintf(stderr, "\r[BREAD] %s: %s [x%lu]", level_str, fmt_str,
+              entry->count);
+      fflush(stderr);
+    }
     return;
   }
 
-  if (has_printed) {
+  if (line_active)
     fprintf(stderr, "\n");
-    fflush(stderr);
-    has_printed = false;
-  }
 
-  fprintf(stderr, "[BREAD] %s: %s\n", level_str, fmt_str);
-  memcpy(last_level, level_str, 20);
-  memcpy(last_msg, fmt_str, 4096);
+  if (entry->count == 1)
+    fprintf(stderr, "\r[BREAD] %s: %s", level_str, fmt_str);
+  else
+    fprintf(stderr, "\r[BREAD] %s: %s [x%lu]", level_str, fmt_str,
+            entry->count);
+  fflush(stderr);
+
+  last_hash = hash;
+  line_active = true;
 }

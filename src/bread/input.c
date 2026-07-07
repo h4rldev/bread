@@ -1,5 +1,6 @@
 #include <string.h>
 
+#include <threads.h>
 #include <xkbcommon/xkbcommon.h>
 
 #include <bread/input.h>
@@ -256,7 +257,7 @@ cstr *bread_event_key_to_cstr(bread_window_t *window, bread_event_t *event) {
   if ((ret = unicode_to_utf8(unicode, buf)) == 0)
     return 0;
 
-  static cstr str[5];
+  static thread_local cstr str[5];
   memcpy(str, buf, ret);
   str[ret] = '\0';
 

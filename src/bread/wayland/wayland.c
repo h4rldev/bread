@@ -2,6 +2,7 @@
 
 #if BREAD_WAYLAND
 
+#include <errno.h>
 #include <poll.h>
 #include <string.h>
 
@@ -315,19 +316,34 @@ static void wayland_init(bread_window_t *window) {
   wl_display_roundtrip(state->display);
   if (!state->compositor) {
     bread_log_fatal("No wl_compositor found");
-    return;
+    goto fail;
   }
 
   bread_log_debug("Creating surface");
   state->wl_surface = wl_compositor_create_surface(state->compositor);
+  if (!state->wl_surface) {
+    bread_log_fatal("Failed to create surface");
+    goto fail;
+  }
+
   bread_log_debug("Getting xdg_surface");
   state->xdg_surface =
       xdg_wm_base_get_xdg_surface(state->xdg_wm_base, state->wl_surface);
+  if (!state->xdg_surface) {
+    bread_log_fatal("Failed to get xdg_surface");
+    goto fail;
+  }
+
   bread_log_debug("Adding xdg_surface listener");
   xdg_surface_add_listener(state->xdg_surface, &xdg_surface_listener, state);
 
   bread_log_debug("Getting toplevel");
   state->xdg_toplevel = xdg_surface_get_toplevel(state->xdg_surface);
+  if (!state->xdg_toplevel) {
+    bread_log_fatal("Failed to get toplevel");
+    goto fail;
+  }
+
   bread_log_debug("Adding toplevel listener");
   xdg_toplevel_add_listener(state->xdg_toplevel, &xdg_toplevel_listener, state);
 
@@ -348,9 +364,8 @@ static void wayland_init(bread_window_t *window) {
         state->decoration_manager, state->xdg_toplevel);
     zxdg_toplevel_decoration_v1_set_mode(
         state->decoration, ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE);
-  } else {
+  } else
     bread_log_debug("No decoration manager, disabling decoration");
-  }
 
   bread_log_debug("Committing surface");
   wl_surface_commit(state->wl_surface);
@@ -367,6 +382,11 @@ static void wayland_init(bread_window_t *window) {
   state->running = true;
   bread_log_debug("Setting window backend");
   window->backend = state;
+  return;
+
+fail:
+  wl_state_cleanup(state);
+  window->backend = null;
 }
 
 /**
@@ -392,6 +412,11 @@ static void wayland_poll_events(bread_window_t *window) {
   };
 
   int ret = poll(&fds, 1, 0);
+  if (ret < 0) {
+    bread_log_error("poll failed: %s", strerror(errno));
+    return;
+  }
+
   if (ret > 0 && (fds.revents & POLLIN)) {
     bread_log_debug("Found event, processing");
     while (wl_display_prepare_read(state->display) != 0)
@@ -465,6 +490,9 @@ static void wayland_destroy(bread_window_t *window) {
 static bread_surface_t wayland_get_surface(bread_window_t *window) {
   bread_log_debug("Getting wayland surface");
   wl_state_t *state = window->backend;
+  if (!state)
+    return (bread_surface_t){0};
+
   return (bread_surface_t){
       .handle = state->wl_surface,
       .display = state->display,

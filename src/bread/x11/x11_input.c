@@ -27,12 +27,17 @@ b32 bread_x11_xkb_init(x11_state_t *state) {
           XKB_X11_MIN_MINOR_XKB_VERSION, XKB_X11_SETUP_XKB_EXTENSION_NO_FLAGS,
           null, null, &unused, &unused)) {
     bread_log_fatal("Failed to setup xkb extension");
+    xkb_context_unref(state->xkb_context);
+    state->xkb_context = null;
     return false;
   }
 
   state->xkb_device_id = xkb_x11_get_core_keyboard_device_id(state->connection);
   if (state->xkb_device_id < 0) {
     bread_log_fatal("Failed to get xkb device id");
+    xkb_context_unref(state->xkb_context);
+
+    state->xkb_context = null;
     return false;
   }
 
@@ -41,6 +46,9 @@ b32 bread_x11_xkb_init(x11_state_t *state) {
       XKB_KEYMAP_COMPILE_NO_FLAGS);
   if (!state->xkb_keymap) {
     bread_log_fatal("Failed to create xkb keymap");
+    xkb_context_unref(state->xkb_context);
+
+    state->xkb_context = null;
     return false;
   }
 
@@ -48,6 +56,11 @@ b32 bread_x11_xkb_init(x11_state_t *state) {
       state->xkb_keymap, state->connection, state->xkb_device_id);
   if (!state->xkb_state) {
     bread_log_fatal("Failed to create xkb state");
+    xkb_keymap_unref(state->xkb_keymap);
+    xkb_context_unref(state->xkb_context);
+
+    state->xkb_keymap = null;
+    state->xkb_context = null;
     return false;
   }
 
@@ -97,15 +110,12 @@ void bread_x11_handle_key_press(x11_state_t *state,
 
   u32 evdev = event->detail - 8;
   bread_key_t bread_key = bread_evdev_to_key(evdev);
+  if (bread_key >= BREAD_KEY_MAX) {
+    bread_log_debug("Got unknown key, ignoring");
+    return;
+  }
 
   state->input.keys[bread_key] = true;
-
-  bread_event_t ev = {0};
-  ev.type = BREAD_EVENT_KEY_PRESS;
-  ev.data.key.key = bread_key;
-  ev.data.key.raw_keycode = evdev;
-  fire_event(state->window, &ev);
-
   if (state->xkb_state) {
     bread_log_debug("Updating xkb state to DOWN");
     xkb_state_update_key(state->xkb_state, event->detail, XKB_KEY_DOWN);
@@ -117,15 +127,12 @@ void bread_x11_handle_key_release(x11_state_t *state,
   bread_log_debug("Handling key release");
   u32 evdev = event->detail - 8;
   bread_key_t bread_key = bread_evdev_to_key(evdev);
+  if (bread_key >= BREAD_KEY_MAX) {
+    bread_log_debug("Got unknown key, ignoring");
+    return;
+  }
+
   state->input.keys[bread_key] = false;
-
-  bread_event_t ev = {0};
-  ev.type = BREAD_EVENT_KEY_RELEASE;
-  ev.data.key.key = bread_key;
-  ev.data.key.raw_keycode = evdev;
-
-  fire_event(state->window, &ev);
-
   if (state->xkb_state) {
     bread_log_debug("Updating xkb state to UP");
     xkb_state_update_key(state->xkb_state, event->detail, XKB_KEY_UP);
@@ -153,10 +160,6 @@ void bread_x11_handle_button_press(x11_state_t *state,
     bread_log_debug("Emitting mouse press for button %d", bread_button);
     state->input.mouse_buttons[bread_button] = true;
 
-    bread_event_t ev = {0};
-    ev.type = BREAD_EVENT_MOUSE_PRESS;
-    ev.data.mouse_button.button = bread_button;
-
     fire_event(state->window, &ev);
   }
 }
@@ -172,12 +175,6 @@ void bread_x11_handle_button_release(x11_state_t *state,
   if (bread_button < BREAD_MOUSE_BUTTON_MAX) {
     bread_log_debug("Emitting mouse release for button %d", bread_button);
     state->input.mouse_buttons[bread_button] = false;
-
-    bread_event_t ev = {0};
-    ev.type = BREAD_EVENT_MOUSE_RELEASE;
-    ev.data.mouse_button.button = bread_button;
-
-    fire_event(state->window, &ev);
   }
 }
 
@@ -186,13 +183,6 @@ void bread_x11_handle_motion(x11_state_t *state,
   bread_log_debug("Handling motion");
   state->input.mouse_x = (f64)event->event_x;
   state->input.mouse_y = (f64)event->event_y;
-
-  bread_event_t ev = {0};
-  ev.type = BREAD_EVENT_MOUSE_MOVE;
-  ev.data.mouse_move.x = state->input.mouse_x;
-  ev.data.mouse_move.y = state->input.mouse_y;
-
-  fire_event(state->window, &ev);
 }
 
 void bread_x11_cursor_init(x11_state_t *state) {
@@ -260,6 +250,10 @@ void bread_x11_cursor_cleanup(x11_state_t *state) {
 void bread_x11_set_cursor(x11_state_t *state, bread_cursor_type_t cursor) {
   if (!state->cursor_context)
     return;
+
+  if (cursor >= BREAD_CURSOR_MAX)
+    return;
+
   if (state->current_cursor == state->cursors[cursor])
     return;
 

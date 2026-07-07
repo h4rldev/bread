@@ -65,6 +65,12 @@ static void keyboard_keymap(void *data, wl_keyboard_t *keyboard, u32 format,
 
   bread_log_debug("Creating xkb state");
   xkb_state_t *xkb_state = xkb_state_new(keymap);
+  if (!xkb_state) {
+    bread_log_fatal("Failed to create xkb state");
+    xkb_keymap_unref(keymap);
+    return;
+  }
+
   bread_log_debug("Unrefing old keymap");
   xkb_keymap_unref(state->xkb_keymap);
   bread_log_debug("Unrefing old xkb state");
@@ -127,6 +133,10 @@ static void keyboard_key(void *data, wl_keyboard_t *keyboard, u32 serial,
 
   bread_log_debug("Converting key to bread key");
   bread_key_t bread_key = bread_evdev_to_key(key);
+  if (bread_key >= BREAD_KEY_MAX) {
+    bread_log_debug("Got unknown key, ignoring");
+    return;
+  }
 
   bread_log_debug("Getting pressed state");
   b32 pressed = keystate == WL_KEYBOARD_KEY_STATE_PRESSED;
@@ -134,7 +144,6 @@ static void keyboard_key(void *data, wl_keyboard_t *keyboard, u32 serial,
 
   bread_log_debug("Emitting key press");
   bread_event_t event = {0};
-  event.type = BREAD_EVENT_KEY_PRESS;
   event.type = pressed ? BREAD_EVENT_KEY_PRESS : BREAD_EVENT_KEY_RELEASE;
   event.data.key.key = bread_key;
   event.data.key.raw_keycode = key;
@@ -346,7 +355,8 @@ static void pointer_axis(void *data, wl_pointer_t *pointer, u32 time, u32 axis,
     state->input.scroll_x += dv;
     event.data.mouse_scroll.dx = dv;
     event.data.mouse_scroll.dy = 0.0f;
-  }
+  } else
+    return;
 
   fire_event(state->window, &event);
 }
@@ -462,7 +472,10 @@ void bread_wayland_seat_init(wl_state_t *state) {
 void bread_wayland_seat_bind(wl_state_t *state, wl_registry_t *registry,
                              u32 name, u32 version) {
   bread_log_debug("Binding wayland seat");
-  state->seat = wl_registry_bind(registry, name, &wl_seat_interface, 7);
+
+  u32 bind_version = version < 7 ? version : 7;
+  state->seat =
+      wl_registry_bind(registry, name, &wl_seat_interface, bind_version);
   bread_log_debug("Adding seat listener");
   wl_seat_add_listener(state->seat, &seat_listener, state);
 }
@@ -529,7 +542,7 @@ void bread_wayland_cursor_init(wl_state_t *state) {
 
   i32 size = 24;
   const cstr *size_env = getenv("HYPRCURSOR_SIZE");
-  if (!size_env && !*size_env) {
+  if (!size_env || !*size_env) {
     size_env = getenv("XCURSOR_SIZE");
     if (!size_env || !*size_env)
       bread_log_error("Failed to get cursor size, defaulting to 24");
@@ -564,9 +577,11 @@ void bread_wayland_cursor_init(wl_state_t *state) {
 
   state->cursor_surface = wl_compositor_create_surface(state->compositor);
   if (!state->cursor_surface) {
-    bread_log_warn("Failed to create cursor surface, using main surface, "
-                   "expect weirdness");
-    state->cursor_surface = state->wl_surface;
+    bread_log_error("Failed to create cursor surface, cursor will be disabled");
+    state->cursor_surface = null;
+    state->current_cursor = null;
+    wl_cursor_theme_destroy(state->cursor_theme);
+    return;
   }
 
   state->current_cursor = state->cursors[BREAD_CURSOR_DEFAULT];
@@ -584,12 +599,16 @@ void bread_wayland_cursor_cleanup(wl_state_t *state) {
 }
 
 void bread_wayland_set_cursor(wl_state_t *state, bread_cursor_type_t cursor) {
-  if (!state->cursor_theme)
+  if (!state->cursor_theme || !state->cursor_surface || !state->pointer)
+    return;
+
+  if (cursor >= BREAD_CURSOR_MAX)
     return;
 
   wl_cursor_t *new_cursor = state->cursors[cursor];
-  if (!new_cursor)
+  if (!new_cursor || new_cursor->image_count == 0 || !new_cursor->images[0])
     return;
+
   if (new_cursor == state->current_cursor)
     return;
 

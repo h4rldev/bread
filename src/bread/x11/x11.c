@@ -229,12 +229,13 @@ static void x11_poll_events(bread_window_t *window) {
       bread_log_debug("Got client message");
       xcb_client_message_event_t *client_message =
           (xcb_client_message_event_t *)event;
-      if (client_message->data.data32[0] == state->wm_delete_window) {
+      if (client_message->type == state->wm_protocols &&
+          client_message->format == 32 &&
+          client_message->data.data32[0] == state->wm_delete_window) {
         state->running = false;
 
-        bread_event_t event = {
-            .type = BREAD_EVENT_WINDOW_CLOSE,
-        };
+        bread_event_t event = {0};
+        event.type = BREAD_EVENT_WINDOW_CLOSE;
         fire_event(state->window, &event);
       }
     } break;
@@ -245,9 +246,8 @@ static void x11_poll_events(bread_window_t *window) {
       state->width = cfg->width;
       state->height = cfg->height;
 
-      bread_event_t event = {
-          .type = BREAD_EVENT_WINDOW_RESIZE,
-      };
+      bread_event_t event = {0};
+      event.type = BREAD_EVENT_WINDOW_RESIZE;
       event.data.resize.width = state->width;
       event.data.resize.height = state->height;
       fire_event(state->window, &event);
@@ -258,9 +258,8 @@ static void x11_poll_events(bread_window_t *window) {
       xcb_key_press_event_t *key = (xcb_key_press_event_t *)event;
       bread_x11_handle_key_press(state, key);
 
-      bread_event_t event = {
-          .type = BREAD_EVENT_KEY_PRESS,
-      };
+      bread_event_t event = {0};
+      event.type = BREAD_EVENT_KEY_PRESS;
       event.data.key.key = bread_evdev_to_key(key->detail - 8);
       event.data.key.raw_keycode = key->detail;
       fire_event(state->window, &event);
@@ -287,9 +286,8 @@ static void x11_poll_events(bread_window_t *window) {
 
       if (button->detail == 4 || button->detail == 5) {
         bread_log_debug("Emitting mouse scroll");
-        bread_event_t event = {
-            .type = BREAD_EVENT_MOUSE_SCROLL,
-        };
+        bread_event_t event = {0};
+        event.type = BREAD_EVENT_MOUSE_SCROLL;
         event.data.mouse_scroll.dx = 0.0;
         event.data.mouse_scroll.dy = (button->detail == 4) ? -1.0 : 1.0;
         fire_event(state->window, &event);
@@ -313,9 +311,8 @@ static void x11_poll_events(bread_window_t *window) {
         break;
 
       bread_mouse_button_t mouse_button = xcb_button_to_bread(button->detail);
-      bread_event_t event = {
-          .type = BREAD_EVENT_MOUSE_RELEASE,
-      };
+      bread_event_t event = {0};
+      event.type = BREAD_EVENT_MOUSE_RELEASE;
       event.data.mouse_button.button = mouse_button;
       fire_event(state->window, &event);
     } break;
@@ -325,9 +322,8 @@ static void x11_poll_events(bread_window_t *window) {
       xcb_motion_notify_event_t *motion = (xcb_motion_notify_event_t *)event;
       bread_x11_handle_motion(state, motion);
 
-      bread_event_t event = {
-          .type = BREAD_EVENT_MOUSE_MOVE,
-      };
+      bread_event_t event = {0};
+      event.type = BREAD_EVENT_MOUSE_MOVE;
       event.data.mouse_move.x = motion->event_x;
       event.data.mouse_move.y = motion->event_y;
       fire_event(state->window, &event);
@@ -405,6 +401,9 @@ static void x11_destroy(bread_window_t *window) {
 static bread_surface_t x11_get_surface(bread_window_t *window) {
   bread_log_debug("Getting X11 surface");
   x11_state_t *state = window->backend;
+  if (!state)
+    return (bread_surface_t){0};
+
   return (bread_surface_t){
       .handle = (void *)(uintptr_t)state->xcb_window,
       .display = state->connection,
