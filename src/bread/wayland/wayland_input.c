@@ -52,6 +52,12 @@ static void keyboard_keymap(void *data, wl_keyboard_t *keyboard, u32 format,
     return;
   }
 
+  if (!state->xkb_context) {
+    bread_log_fatal("No xkb context, can't create keymap");
+    munmap(map, size);
+    return;
+  }
+
   bread_log_debug("Creating keymap from map, with XKB_V1 format");
   xkb_keymap_t *keymap = xkb_keymap_new_from_string(
       state->xkb_context, map, XKB_KEYMAP_FORMAT_TEXT_V1,
@@ -473,7 +479,7 @@ void bread_wayland_seat_bind(wl_state_t *state, wl_registry_t *registry,
                              u32 name, u32 version) {
   bread_log_debug("Binding wayland seat");
 
-  u32 bind_version = version < 7 ? version : 7;
+  u32 bind_version = (version < 7 || version > 7) ? version : 7;
   state->seat =
       wl_registry_bind(registry, name, &wl_seat_interface, bind_version);
   bread_log_debug("Adding seat listener");
@@ -484,24 +490,38 @@ void bread_wayland_seat_cleanup(wl_state_t *state) {
   if (state->keyboard) {
     bread_log_debug("Releasing keyboard");
     wl_keyboard_release(state->keyboard);
+    state->keyboard = null;
   }
 
   if (state->pointer) {
     bread_log_debug("Releasing pointer");
     wl_pointer_release(state->pointer);
+    state->pointer = null;
   }
 
   if (state->seat) {
     bread_log_debug("Destroying seat");
     wl_seat_destroy(state->seat);
+    state->seat = null;
   }
 
-  bread_log_debug("Unrefing xkb state");
-  xkb_state_unref(state->xkb_state);
-  bread_log_debug("Unrefing xkb keymap");
-  xkb_keymap_unref(state->xkb_keymap);
-  bread_log_debug("Unrefing xkb context");
-  xkb_context_unref(state->xkb_context);
+  if (state->xkb_state) {
+    bread_log_debug("Unrefing xkb state");
+    xkb_state_unref(state->xkb_state);
+    state->xkb_state = null;
+  }
+
+  if (state->xkb_keymap) {
+    bread_log_debug("Unrefing xkb keymap");
+    xkb_keymap_unref(state->xkb_keymap);
+    state->xkb_keymap = null;
+  }
+
+  if (state->xkb_context) {
+    bread_log_debug("Unrefing xkb context");
+    xkb_context_unref(state->xkb_context);
+    state->xkb_context = null;
+  }
 }
 
 static const cstr *cursor_names[] = {

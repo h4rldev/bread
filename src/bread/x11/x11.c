@@ -63,20 +63,32 @@ static void x11_state_cleanup(x11_state_t *state) {
   if (state->xcb_window) {
     bread_log_debug("Destroying window");
     xcb_destroy_window(state->connection, state->xcb_window);
+    state->xcb_window = XCB_NONE;
   }
+
   if (state->connection) {
     bread_log_debug("Disconnecting from X server");
     xcb_disconnect(state->connection);
+    state->connection = null;
   }
 
-  if (state->xkb_context)
+  if (state->xkb_context) {
+    bread_log_debug("Unrefing xkb context");
     xkb_context_unref(state->xkb_context);
+    state->xkb_context = null;
+  }
 
-  if (state->xkb_keymap)
+  if (state->xkb_keymap) {
+    bread_log_debug("Unrefing xkb keymap");
     xkb_keymap_unref(state->xkb_keymap);
+    state->xkb_keymap = null;
+  }
 
-  if (state->xkb_state)
+  if (state->xkb_state) {
+    bread_log_debug("Unrefing xkb state");
     xkb_state_unref(state->xkb_state);
+    state->xkb_state = null;
+  }
 }
 
 /**
@@ -137,6 +149,12 @@ static void x11_init(bread_window_t *window) {
   state->width = window->width;
   state->height = window->height;
   state->xcb_window = xcb_generate_id(state->connection);
+  if (state->xcb_window == XCB_NONE) {
+    bread_log_fatal("Failed to generate window id");
+    x11_state_cleanup(state);
+    window->backend = null;
+    return;
+  }
 
   bread_log_debug("Creating window with mask");
   u32 value_mask = XCB_CW_EVENT_MASK;
@@ -194,7 +212,12 @@ static void x11_init(bread_window_t *window) {
                       state->xcb_window, XCB_ATOM_WM_CLASS, XCB_ATOM_STRING, 8,
                       class->len, class->base);
 
-  bread_x11_xkb_init(state);
+  if (!bread_x11_xkb_init(state)) {
+    bread_log_fatal("Failed to initialize xkb");
+    x11_state_cleanup(state);
+    window->backend = NULL;
+    return;
+  }
 
   bread_log_debug("Setting running to true");
   state->running = true;
@@ -221,6 +244,17 @@ static void x11_poll_events(bread_window_t *window) {
 
   xcb_generic_event_t *event;
   while ((event = xcb_poll_for_event(state->connection))) {
+    if (event->response_type == 0) {
+      xcb_generic_error_t *error = (xcb_generic_error_t *)event;
+      bread_log_error(
+          "X11 error: response_type=%u, error_code=%u, "
+          "sequence=%u, resource_id=%u, major_code=%u, minor_code=%u",
+          error->response_type, error->error_code, error->sequence,
+          error->resource_id, error->major_code, error->minor_code);
+      free(event);
+      continue;
+    }
+
     u8 type = event->response_type & ~0x80;
     bread_log_debug("Got event of type %d", type);
 

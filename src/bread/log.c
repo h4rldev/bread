@@ -58,8 +58,8 @@ void bread_log(bread_log_level_t level, cstr *fmt, ...) {
     return;
 #endif
 
-  static cstr level_str[20] = {0};
-  static cstr fmt_str[4096] = {0};
+  static thread_local cstr level_str[20] = {0};
+  static thread_local cstr fmt_str[4096] = {0};
 
   switch (level) {
   case BREAD_LOG_LEVEL_DEBUG:

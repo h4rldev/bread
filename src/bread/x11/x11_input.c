@@ -159,8 +159,6 @@ void bread_x11_handle_button_press(x11_state_t *state,
   if (bread_button < BREAD_MOUSE_BUTTON_MAX) {
     bread_log_debug("Emitting mouse press for button %d", bread_button);
     state->input.mouse_buttons[bread_button] = true;
-
-    fire_event(state->window, &ev);
   }
 }
 

@@ -160,13 +160,15 @@ static void global_registry_handler(void *data, wl_registry_t *registry, u32 id,
 
   if (strcmp(interface, wl_compositor_interface.name) == 0) {
     bread_log_debug("Binding compositor");
-    state->compositor =
-        wl_registry_bind(registry, id, &wl_compositor_interface, 4);
+    u32 compos_version = (version > 4 || version < 4) ? version : 4;
+    state->compositor = wl_registry_bind(registry, id, &wl_compositor_interface,
+                                         compos_version);
   }
 
   else if (strcmp(interface, wl_shm_interface.name) == 0) {
     bread_log_debug("Binding shm");
-    state->shm = wl_registry_bind(registry, id, &wl_shm_interface, 1);
+    u32 shm_version = (version > 1 || version < 1) ? version : 1;
+    state->shm = wl_registry_bind(registry, id, &wl_shm_interface, shm_version);
   }
 
   else if (strcmp(interface, wl_seat_interface.name) == 0) {
@@ -176,14 +178,17 @@ static void global_registry_handler(void *data, wl_registry_t *registry, u32 id,
 
   else if (strcmp(interface, zxdg_decoration_manager_v1_interface.name) == 0) {
     bread_log_debug("Binding SSD manager");
-    state->decoration_manager = wl_registry_bind(
-        registry, id, &zxdg_decoration_manager_v1_interface, 1);
+    u32 decoration_version = (version > 1 || version < 1) ? version : 1;
+    state->decoration_manager =
+        wl_registry_bind(registry, id, &zxdg_decoration_manager_v1_interface,
+                         decoration_version);
   }
 
   else if (strcmp(interface, xdg_wm_base_interface.name) == 0) {
     bread_log_debug("Binding wm_base");
+    u32 wm_version = (version > 1 || version < 1) ? version : 1;
     state->xdg_wm_base =
-        wl_registry_bind(registry, id, &xdg_wm_base_interface, 1);
+        wl_registry_bind(registry, id, &xdg_wm_base_interface, wm_version);
     xdg_wm_base_add_listener(state->xdg_wm_base, &xdg_wm_base_listener, state);
   }
 }
@@ -212,56 +217,67 @@ static void wl_state_cleanup(wl_state_t *state) {
   if (state->seat) {
     bread_log_debug("Cleaning up seat");
     bread_wayland_seat_cleanup(state);
+    state->seat = null;
   }
 
   if (state->decoration) {
     bread_log_debug("Destroying decoration");
     zxdg_toplevel_decoration_v1_destroy(state->decoration);
+    state->decoration = null;
   }
 
   if (state->decoration_manager) {
     bread_log_debug("Destroying decoration manager");
     zxdg_decoration_manager_v1_destroy(state->decoration_manager);
+    state->decoration_manager = null;
   }
 
   if (state->xdg_toplevel) {
     bread_log_debug("Destroying toplevel");
     xdg_toplevel_destroy(state->xdg_toplevel);
+    state->xdg_toplevel = null;
   }
 
   if (state->xdg_surface) {
     bread_log_debug("Destroying surface");
     xdg_surface_destroy(state->xdg_surface);
+    state->xdg_surface = null;
   }
 
   if (state->wl_surface) {
     bread_log_debug("Destroying surface");
     wl_surface_destroy(state->wl_surface);
+    state->wl_surface = null;
   }
 
   if (state->xdg_wm_base) {
     bread_log_debug("Destroying wm_base");
     xdg_wm_base_destroy(state->xdg_wm_base);
+    state->xdg_wm_base = null;
   }
 
   if (state->shm) {
     bread_log_debug("Destroying shm");
     wl_shm_destroy(state->shm);
+    state->shm = null;
   }
 
   if (state->compositor) {
     bread_log_debug("Destroying compositor");
     wl_compositor_destroy(state->compositor);
+    state->compositor = null;
   }
 
   if (state->registry) {
     bread_log_debug("Destroying registry");
     wl_registry_destroy(state->registry);
+    state->registry = null;
   }
 
   if (state->display) {
     bread_log_debug("Disconnecting from display");
     wl_display_disconnect(state->display);
+    state->display = null;
   }
 }
 
@@ -313,7 +329,11 @@ static void wayland_init(bread_window_t *window) {
   bread_wayland_seat_init(state);
 
   bread_log_debug("Flushing display");
-  wl_display_roundtrip(state->display);
+  if (wl_display_roundtrip(state->display) == -1) {
+    bread_log_fatal("Failed to roundtrip display");
+    goto fail;
+  }
+
   if (!state->compositor) {
     bread_log_fatal("No wl_compositor found");
     goto fail;
@@ -323,6 +343,11 @@ static void wayland_init(bread_window_t *window) {
   state->wl_surface = wl_compositor_create_surface(state->compositor);
   if (!state->wl_surface) {
     bread_log_fatal("Failed to create surface");
+    goto fail;
+  }
+
+  if (!state->xdg_wm_base) {
+    bread_log_fatal("xdg_wm_base is null");
     goto fail;
   }
 

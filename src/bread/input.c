@@ -168,6 +168,12 @@ bread_mouse_button_t bread_evdev_to_mouse_button(u32 button) {
 }
 
 bread_input_state_t bread_window_get_input(bread_window_t *window) {
+  bread_input_state_t empty = {0};
+  if (!window || !window->backend) {
+    bread_log_error("Missing values, can't get input state");
+    return empty;
+  }
+
 #if BREAD_WAYLAND
   bread_log_debug("Getting input state for wayland");
   wl_state_t *state = window->backend;
@@ -184,11 +190,18 @@ u32 bread_event_key_to_unicode(bread_window_t *window, bread_event_t *event) {
       event->type != BREAD_EVENT_KEY_RELEASE)
     return 0;
 
+  if (!window || !window->backend) {
+    bread_log_error("Missing values, can't convert key to unicode");
+    return 0;
+  }
+
 #if BREAD_WAYLAND
   bread_log_debug("Converting key to unicode for wayland");
   wl_state_t *state = window->backend;
-  if (!state->xkb_state)
+  if (!state->xkb_state) {
+    bread_log_error("Missing xkb_state, can't convert key to unicode");
     return 0;
+  }
 
   xkb_keycode_t keycode = event->data.key.raw_keycode + 8;
   return xkb_keysym_to_utf32(
@@ -196,8 +209,10 @@ u32 bread_event_key_to_unicode(bread_window_t *window, bread_event_t *event) {
 #elif BREAD_X11
   bread_log_debug("Converting key to unicode for x11");
   x11_state_t *state = window->backend;
-  if (!state->xkb_state)
+  if (!state->xkb_state) {
+    bread_log_error("Missing xkb_state, can't convert key to unicode");
     return 0;
+  }
   xkb_keycode_t keycode = event->data.key.raw_keycode;
   return xkb_keysym_to_utf32(
       xkb_state_key_get_one_sym(state->xkb_state, keycode));

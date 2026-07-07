@@ -279,12 +279,17 @@ typedef struct {
 /**
  * @brief The backend type of the bread build.
  *
+ * @param BREAD_BACKEND_UNKNOWN The window is using an unknown backend, meaning
+ * that either it was built incorrectly or the backend is not supported.
  * @param BREAD_BACKEND_WAYLAND The window is using the wayland backend.
  * @param BREAD_BACKEND_X11 The window is using the X11 backend.
+ * @param BREAD_BACKEND_MAX The maximum backend type, used for bounds checking.
  */
 typedef enum bread_backend {
+  BREAD_BACKEND_UNKNOWN = -1,
   BREAD_BACKEND_WAYLAND,
   BREAD_BACKEND_X11,
+  BREAD_BACKEND_MAX
 } bread_backend_type_t;
 
 /**
