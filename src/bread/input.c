@@ -186,14 +186,14 @@ bread_input_state_t bread_window_get_input(bread_window_t *window) {
 }
 
 u32 bread_event_key_to_unicode(bread_window_t *window, bread_event_t *event) {
-  if (event->type != BREAD_EVENT_KEY_PRESS &&
-      event->type != BREAD_EVENT_KEY_RELEASE)
-    return 0;
-
-  if (!window || !window->backend) {
+  if (!window || !window->backend || !event) {
     bread_log_error("Missing values, can't convert key to unicode");
     return 0;
   }
+
+  if (event->type != BREAD_EVENT_KEY_PRESS &&
+      event->type != BREAD_EVENT_KEY_RELEASE)
+    return 0;
 
 #if BREAD_WAYLAND
   bread_log_debug("Converting key to unicode for wayland");
@@ -280,6 +280,11 @@ cstr *bread_event_key_to_cstr(bread_window_t *window, bread_event_t *event) {
 }
 
 void bread_cursor_init(bread_window_t *window) {
+  if (!window || !window->backend) {
+    bread_log_error("Missing values, can't init cursor");
+    return;
+  }
+
 #if BREAD_WAYLAND
   wl_state_t *state = window->backend;
   if (!state)
@@ -299,6 +304,11 @@ void bread_cursor_init(bread_window_t *window) {
 }
 
 void bread_cursor_cleanup(bread_window_t *window) {
+  if (!window || !window->backend) {
+    bread_log_error("Missing values, can't cleanup cursor");
+    return;
+  }
+
 #if BREAD_WAYLAND
   wl_state_t *state = window->backend;
   if (!state)
@@ -316,6 +326,16 @@ void bread_cursor_cleanup(bread_window_t *window) {
 }
 
 void bread_set_cursor(bread_window_t *window, bread_cursor_type_t cursor) {
+  if (!window || !window->backend) {
+    bread_log_error("Missing values, can't set cursor");
+    return;
+  }
+
+  if (cursor >= BREAD_CURSOR_MAX) {
+    bread_log_error("Invalid cursor type, can't set cursor");
+    return;
+  }
+
 #if BREAD_WAYLAND
   wl_state_t *state = window->backend;
   if (!state) {

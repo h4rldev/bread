@@ -50,11 +50,15 @@ void bread_window_init(bread_window_t *window) {
 
   bread_log_debug("Initializing window");
   backend_vtable->init(window);
+  if (!window->backend) {
+    bread_log_fatal("Backend initialization failed.");
+    return;
+  }
   bread_cursor_init(window);
 }
 
 void bread_window_set_title(bread_window_t *window, const char *title) {
-  if (!window || !title || !*title) {
+  if (!window || !window->backend || !title) {
     bread_log_error("Missing values, can't set title");
     return;
   }
@@ -70,7 +74,7 @@ void bread_window_set_title(bread_window_t *window, const char *title) {
 }
 
 void bread_window_set_min_size(bread_window_t *window, u16 width, u16 height) {
-  if (!window) {
+  if (!window || !window->backend) {
     bread_log_error("Missing values, can't set min size");
     return;
   }
@@ -86,7 +90,7 @@ void bread_window_set_min_size(bread_window_t *window, u16 width, u16 height) {
 }
 
 void bread_window_poll(bread_window_t *window) {
-  if (!window) {
+  if (!window || !window->backend) {
     bread_log_error("Missing values, can't poll");
     return;
   }
@@ -101,7 +105,7 @@ void bread_window_poll(bread_window_t *window) {
 }
 
 b32 bread_window_should_close(bread_window_t *window) {
-  if (!window) {
+  if (!window || !window->backend) {
     bread_log_error("Missing values, can't check if should close");
     return false;
   }
@@ -116,7 +120,7 @@ b32 bread_window_should_close(bread_window_t *window) {
 }
 
 void bread_window_destroy(bread_window_t *window) {
-  if (!window) {
+  if (!window || !window->backend) {
     bread_log_error("Missing values, can't destroy window");
     return;
   }
@@ -128,8 +132,8 @@ void bread_window_destroy(bread_window_t *window) {
   }
 
   bread_log_debug("Destroying window");
-  backend_vtable->destroy(window);
   bread_cursor_cleanup(window);
+  backend_vtable->destroy(window);
 }
 
 void bread_window_clamp_size(bread_window_t *window, u32 *width, u32 *height) {
@@ -146,7 +150,7 @@ void bread_window_clamp_size(bread_window_t *window, u32 *width, u32 *height) {
 }
 
 bread_surface_t bread_window_get_surface(bread_window_t *window) {
-  if (!window) {
+  if (!window || !window->backend) {
     bread_log_error("Missing values, can't get surface");
     return (bread_surface_t){0};
   }

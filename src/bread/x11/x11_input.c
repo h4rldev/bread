@@ -68,13 +68,6 @@ b32 bread_x11_xkb_init(x11_state_t *state) {
   return true;
 }
 
-void bread_x11_xkb_cleanup(x11_state_t *state) {
-  bread_log_debug("Cleaning up X11 xkb");
-  xkb_state_unref(state->xkb_state);
-  xkb_keymap_unref(state->xkb_keymap);
-  xkb_context_unref(state->xkb_context);
-}
-
 bread_mouse_button_t xcb_button_to_bread(u8 detail) {
   switch (detail) {
   case 1:
@@ -184,6 +177,12 @@ void bread_x11_handle_motion(x11_state_t *state,
 }
 
 void bread_x11_cursor_init(x11_state_t *state) {
+  if (!state || !state->connection || !state->screen) {
+    bread_log_error(
+        "No state, X11 connection or screen, can't initialize cursor");
+    return;
+  }
+
   if (xcb_cursor_context_new(state->connection, state->screen,
                              &state->cursor_context) != 0) {
     bread_log_error(
@@ -239,6 +238,11 @@ void bread_x11_cursor_init(x11_state_t *state) {
 }
 
 void bread_x11_cursor_cleanup(x11_state_t *state) {
+  if (!state) {
+    bread_log_error("Missing values, can't cleanup cursor");
+    return;
+  }
+
   if (state->cursor_context)
     xcb_cursor_context_free(state->cursor_context);
 
@@ -246,11 +250,16 @@ void bread_x11_cursor_cleanup(x11_state_t *state) {
 }
 
 void bread_x11_set_cursor(x11_state_t *state, bread_cursor_type_t cursor) {
-  if (!state->cursor_context)
+  if (!state || !state->cursor_context || !state->connection ||
+      !state->xcb_window) {
+    bread_log_error("Missing values, can't set cursor");
     return;
+  }
 
-  if (cursor >= BREAD_CURSOR_MAX)
+  if (cursor >= BREAD_CURSOR_MAX) {
+    bread_log_error("Invalid cursor type, can't set cursor");
     return;
+  }
 
   if (state->current_cursor == state->cursors[cursor])
     return;

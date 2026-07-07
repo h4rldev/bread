@@ -146,6 +146,13 @@ static void x11_init(bread_window_t *window) {
 
   bread_log_debug("Setting up window");
   state->screen = iter.data;
+  if (!state->screen) {
+    bread_log_fatal("Failed to get screen");
+    x11_state_cleanup(state);
+    window->backend = null;
+    return;
+  }
+
   state->width = window->width;
   state->height = window->height;
   state->xcb_window = xcb_generate_id(state->connection);
@@ -236,12 +243,12 @@ static void x11_init(bread_window_t *window) {
  * @see @ref bread_window_new().
  */
 static void x11_poll_events(bread_window_t *window) {
-  x11_state_t *state = window->backend;
-  if (!state) {
-    bread_log_fatal("No X11 state, can't poll events");
+  if (!window || !window->backend) {
+    bread_log_error("Missing values, can't poll events");
     return;
   }
 
+  x11_state_t *state = window->backend;
   xcb_generic_event_t *event;
   while ((event = xcb_poll_for_event(state->connection))) {
     if (event->response_type == 0) {
@@ -268,23 +275,25 @@ static void x11_poll_events(bread_window_t *window) {
           client_message->data.data32[0] == state->wm_delete_window) {
         state->running = false;
 
-        bread_event_t event = {0};
-        event.type = BREAD_EVENT_WINDOW_CLOSE;
-        fire_event(state->window, &event);
+        bread_event_t ev = {0};
+        ev.type = BREAD_EVENT_WINDOW_CLOSE;
+        fire_event(state->window, &ev);
       }
     } break;
 
     case XCB_CONFIGURE_NOTIFY: {
       bread_log_debug("Got configure notify");
       xcb_configure_notify_event_t *cfg = (xcb_configure_notify_event_t *)event;
-      state->width = cfg->width;
-      state->height = cfg->height;
+      if (state->width != cfg->width || state->height != cfg->height) {
+        state->width = cfg->width;
+        state->height = cfg->height;
 
-      bread_event_t event = {0};
-      event.type = BREAD_EVENT_WINDOW_RESIZE;
-      event.data.resize.width = state->width;
-      event.data.resize.height = state->height;
-      fire_event(state->window, &event);
+        bread_event_t ev = {0};
+        ev.type = BREAD_EVENT_WINDOW_RESIZE;
+        ev.data.resize.width = state->width;
+        ev.data.resize.height = state->height;
+        fire_event(state->window, &ev);
+      }
     } break;
 
     case XCB_KEY_PRESS: {
@@ -292,11 +301,11 @@ static void x11_poll_events(bread_window_t *window) {
       xcb_key_press_event_t *key = (xcb_key_press_event_t *)event;
       bread_x11_handle_key_press(state, key);
 
-      bread_event_t event = {0};
-      event.type = BREAD_EVENT_KEY_PRESS;
-      event.data.key.key = bread_evdev_to_key(key->detail - 8);
-      event.data.key.raw_keycode = key->detail;
-      fire_event(state->window, &event);
+      bread_event_t ev = {0};
+      ev.type = BREAD_EVENT_KEY_PRESS;
+      ev.data.key.key = bread_evdev_to_key(key->detail - 8);
+      ev.data.key.raw_keycode = key->detail;
+      fire_event(state->window, &ev);
     } break;
 
     case XCB_KEY_RELEASE: {
@@ -304,13 +313,11 @@ static void x11_poll_events(bread_window_t *window) {
       xcb_key_release_event_t *key = (xcb_key_release_event_t *)event;
       bread_x11_handle_key_release(state, key);
 
-      bread_event_t event = {
-          .type = BREAD_EVENT_KEY_RELEASE,
-      };
-
-      event.data.key.key = bread_evdev_to_key(key->detail - 8);
-      event.data.key.raw_keycode = key->detail;
-      fire_event(state->window, &event);
+      bread_event_t ev = {0};
+      ev.type = BREAD_EVENT_KEY_RELEASE;
+      ev.data.key.key = bread_evdev_to_key(key->detail - 8);
+      ev.data.key.raw_keycode = key->detail;
+      fire_event(state->window, &ev);
     } break;
 
     case XCB_BUTTON_PRESS: {
@@ -320,21 +327,20 @@ static void x11_poll_events(bread_window_t *window) {
 
       if (button->detail == 4 || button->detail == 5) {
         bread_log_debug("Emitting mouse scroll");
-        bread_event_t event = {0};
-        event.type = BREAD_EVENT_MOUSE_SCROLL;
-        event.data.mouse_scroll.dx = 0.0;
-        event.data.mouse_scroll.dy = (button->detail == 4) ? -1.0 : 1.0;
-        fire_event(state->window, &event);
+        bread_event_t ev = {0};
+        ev.type = BREAD_EVENT_MOUSE_SCROLL;
+        ev.data.mouse_scroll.dx = 0.0;
+        ev.data.mouse_scroll.dy = (button->detail == 4) ? -1.0 : 1.0;
+        fire_event(state->window, &ev);
         break;
       }
 
       bread_log_debug("Emitting mouse press");
       bread_mouse_button_t mouse_button = xcb_button_to_bread(button->detail);
-      bread_event_t event = {
-          .type = BREAD_EVENT_MOUSE_PRESS,
-      };
-      event.data.mouse_button.button = mouse_button;
-      fire_event(state->window, &event);
+      bread_event_t ev = {0};
+      ev.type = BREAD_EVENT_MOUSE_PRESS;
+      ev.data.mouse_button.button = mouse_button;
+      fire_event(state->window, &ev);
     } break;
 
     case XCB_BUTTON_RELEASE: {
@@ -345,10 +351,10 @@ static void x11_poll_events(bread_window_t *window) {
         break;
 
       bread_mouse_button_t mouse_button = xcb_button_to_bread(button->detail);
-      bread_event_t event = {0};
-      event.type = BREAD_EVENT_MOUSE_RELEASE;
-      event.data.mouse_button.button = mouse_button;
-      fire_event(state->window, &event);
+      bread_event_t ev = {0};
+      ev.type = BREAD_EVENT_MOUSE_RELEASE;
+      ev.data.mouse_button.button = mouse_button;
+      fire_event(state->window, &ev);
     } break;
 
     case XCB_MOTION_NOTIFY: {
@@ -356,11 +362,11 @@ static void x11_poll_events(bread_window_t *window) {
       xcb_motion_notify_event_t *motion = (xcb_motion_notify_event_t *)event;
       bread_x11_handle_motion(state, motion);
 
-      bread_event_t event = {0};
-      event.type = BREAD_EVENT_MOUSE_MOVE;
-      event.data.mouse_move.x = motion->event_x;
-      event.data.mouse_move.y = motion->event_y;
-      fire_event(state->window, &event);
+      bread_event_t ev = {0};
+      ev.type = BREAD_EVENT_MOUSE_MOVE;
+      ev.data.mouse_move.x = motion->event_x;
+      ev.data.mouse_move.y = motion->event_y;
+      fire_event(state->window, &ev);
     } break;
 
     case XCB_DESTROY_NOTIFY: {
@@ -433,10 +439,17 @@ static void x11_destroy(bread_window_t *window) {
  * @return The surface of the X11 window as a bread surface.
  */
 static bread_surface_t x11_get_surface(bread_window_t *window) {
+  if (!window || !window->backend) {
+    bread_log_error("Missing values, can't get surface");
+    return (bread_surface_t){0};
+  }
+
   bread_log_debug("Getting X11 surface");
   x11_state_t *state = window->backend;
-  if (!state)
+  if (!state->connection) {
+    bread_log_error("No X11 connection, can't get surface");
     return (bread_surface_t){0};
+  }
 
   return (bread_surface_t){
       .handle = (void *)(uintptr_t)state->xcb_window,
@@ -462,9 +475,12 @@ static void x11_set_title(bread_window_t *window, const char *title) {
     return;
 
   window->title = string_from_cstr(window->arena, title);
+  if (!window->title || window->title->len == 0) {
+    bread_log_error("Failed to set title, invalid title");
+    return;
+  }
 
-  size_t len = strlen(title);
-
+  u64 len = window->title->len;
   xcb_change_property(state->connection, XCB_PROP_MODE_REPLACE,
                       state->xcb_window, XCB_ATOM_WM_NAME, XCB_ATOM_STRING, 8,
                       len, title);
@@ -493,9 +509,16 @@ static void x11_set_title(bread_window_t *window, const char *title) {
  * @pre @c window must be valid and created by @ref bread_window_new().
  */
 static void x11_set_min_size(bread_window_t *window, u16 width, u16 height) {
-  x11_state_t *state = window->backend;
-  if (!state)
+  if (!window || !window->backend) {
+    bread_log_error("Missing values, can't set min size");
     return;
+  }
+
+  x11_state_t *state = window->backend;
+  if (!state->connection) {
+    bread_log_error("No X11 connection, can't set min size");
+    return;
+  }
 
   if ((width == window->min_width && height == window->min_height) ||
       (width == 0 && height == 0))

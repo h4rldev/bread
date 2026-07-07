@@ -83,12 +83,11 @@ static void xdg_toplevel_configure(void *data, xdg_toplevel_t *toplevel,
   wl_state_t *state = data;
   if (width > 0 && height > 0) {
     bread_log_debug("Setting window size to %d x %d", width, height);
-    state->width = (u16)width;
-    state->height = (u16)height;
+    state->width = (u16)(width > 65535 ? 65535 : width);
+    state->height = (u16)(height > 65535 ? 65535 : height);
 
-    bread_event_t event = {
-        .type = BREAD_EVENT_WINDOW_RESIZE,
-    };
+    bread_event_t event = {0};
+    event.type = BREAD_EVENT_WINDOW_RESIZE;
     event.data.resize.width = state->width;
     event.data.resize.height = state->height;
     fire_event(state->window, &event);
@@ -160,14 +159,14 @@ static void global_registry_handler(void *data, wl_registry_t *registry, u32 id,
 
   if (strcmp(interface, wl_compositor_interface.name) == 0) {
     bread_log_debug("Binding compositor");
-    u32 compos_version = (version > 4 || version < 4) ? version : 4;
+    u32 compos_version = (version < 4) ? version : 4;
     state->compositor = wl_registry_bind(registry, id, &wl_compositor_interface,
                                          compos_version);
   }
 
   else if (strcmp(interface, wl_shm_interface.name) == 0) {
     bread_log_debug("Binding shm");
-    u32 shm_version = (version > 1 || version < 1) ? version : 1;
+    u32 shm_version = (version < 1) ? version : 1;
     state->shm = wl_registry_bind(registry, id, &wl_shm_interface, shm_version);
   }
 
@@ -178,7 +177,7 @@ static void global_registry_handler(void *data, wl_registry_t *registry, u32 id,
 
   else if (strcmp(interface, zxdg_decoration_manager_v1_interface.name) == 0) {
     bread_log_debug("Binding SSD manager");
-    u32 decoration_version = (version > 1 || version < 1) ? version : 1;
+    u32 decoration_version = (version < 1) ? version : 1;
     state->decoration_manager =
         wl_registry_bind(registry, id, &zxdg_decoration_manager_v1_interface,
                          decoration_version);
@@ -186,7 +185,7 @@ static void global_registry_handler(void *data, wl_registry_t *registry, u32 id,
 
   else if (strcmp(interface, xdg_wm_base_interface.name) == 0) {
     bread_log_debug("Binding wm_base");
-    u32 wm_version = (version > 1 || version < 1) ? version : 1;
+    u32 wm_version = (version < 1) ? version : 1;
     state->xdg_wm_base =
         wl_registry_bind(registry, id, &xdg_wm_base_interface, wm_version);
     xdg_wm_base_add_listener(state->xdg_wm_base, &xdg_wm_base_listener, state);
@@ -312,6 +311,7 @@ static void wayland_init(bread_window_t *window) {
   state->display = wl_display_connect(NULL);
   if (!state->display) {
     bread_log_fatal("Failed to connect to display socket");
+    window->backend = null;
     return;
   }
 
@@ -392,15 +392,19 @@ static void wayland_init(bread_window_t *window) {
   } else
     bread_log_debug("No decoration manager, disabling decoration");
 
-  bread_log_debug("Committing surface");
-  wl_surface_commit(state->wl_surface);
-  bread_log_debug("Flushing display");
-  wl_display_roundtrip(state->display);
-
   if (!window->class) {
     xdg_toplevel_set_app_id(state->xdg_toplevel, "bread-app");
   } else {
     xdg_toplevel_set_app_id(state->xdg_toplevel, string_to_cstr(window->class));
+  }
+
+  bread_log_debug("Committing surface");
+  wl_surface_commit(state->wl_surface);
+  bread_log_debug("Flushing display");
+
+  if (wl_display_roundtrip(state->display) == -1) {
+    bread_log_fatal("Failed to roundtrip display");
+    goto fail;
   }
 
   bread_log_debug("Setting running to true");
@@ -431,6 +435,8 @@ static void wayland_poll_events(bread_window_t *window) {
     return;
   }
 
+  wl_display_flush(state->display);
+
   struct pollfd fds = {
       .fd = wl_display_get_fd(state->display),
       .events = POLLIN,
@@ -442,18 +448,26 @@ static void wayland_poll_events(bread_window_t *window) {
     return;
   }
 
-  if (ret > 0 && (fds.revents & POLLIN)) {
-    bread_log_debug("Found event, processing");
-    while (wl_display_prepare_read(state->display) != 0)
-      wl_display_dispatch_pending(state->display);
+  if (ret > 0) {
+    if (fds.revents & (POLLERR | POLLHUP)) {
+      bread_log_error("Wayland socket error, closing");
+      state->running = false;
+      return;
+    }
 
-    wl_display_flush(state->display);
-    wl_display_read_events(state->display);
-    wl_display_dispatch_pending(state->display);
-  } else {
-    bread_log_debug("No event, flushing");
-    wl_display_dispatch_pending(state->display);
-    wl_display_flush(state->display);
+    if (fds.revents & POLLIN) {
+      bread_log_debug("Found event, processing");
+      while (wl_display_prepare_read(state->display) != 0)
+        wl_display_dispatch_pending(state->display);
+
+      wl_display_flush(state->display);
+      wl_display_read_events(state->display);
+      wl_display_dispatch_pending(state->display);
+    } else {
+      bread_log_debug("No event, flushing");
+      wl_display_dispatch_pending(state->display);
+      wl_display_flush(state->display);
+    }
   }
 }
 
@@ -535,11 +549,23 @@ static bread_surface_t wayland_get_surface(bread_window_t *window) {
  * @pre @c window must be valid and created by @ref bread_window_new().
  */
 static void wayland_set_title(bread_window_t *window, const char *title) {
-  wl_state_t *state = window->backend;
-  if (!state || !state->xdg_toplevel)
+  if (!window || !window->backend || !title) {
+    bread_log_error("Missing values, can't set title");
     return;
+  }
+
+  wl_state_t *state = window->backend;
+  if (!state->xdg_toplevel) {
+    bread_log_error("No xdg_toplevel, can't set title");
+    return;
+  }
 
   window->title = string_from_cstr(window->arena, title);
+  if (!window->title || window->title->len == 0) {
+    bread_log_error("Failed to set title, invalid title");
+    return;
+  }
+
   xdg_toplevel_set_title(state->xdg_toplevel, title);
   wl_surface_commit(state->wl_surface);
 }

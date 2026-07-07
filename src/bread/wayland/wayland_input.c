@@ -479,7 +479,7 @@ void bread_wayland_seat_bind(wl_state_t *state, wl_registry_t *registry,
                              u32 name, u32 version) {
   bread_log_debug("Binding wayland seat");
 
-  u32 bind_version = (version < 7 || version > 7) ? version : 7;
+  u32 bind_version = (version < 7) ? version : 7;
   state->seat =
       wl_registry_bind(registry, name, &wl_seat_interface, bind_version);
   bread_log_debug("Adding seat listener");
@@ -571,10 +571,20 @@ void bread_wayland_cursor_init(wl_state_t *state) {
   if (size_env) {
     cstr *endp;
     size = strtol(size_env, &endp, 10);
-    if (size_env == endp) {
+    if (size_env == endp || size <= 0) {
       bread_log_error("Failed to parse cursor size '%s'", size_env);
       size = 24;
     }
+  }
+
+  if (!state->shm) {
+    bread_log_error("No wl_shm, cursor will be disabled");
+    return;
+  }
+
+  if (!state->compositor) {
+    bread_log_error("No wl_compositor, cursor will be disabled");
+    return;
   }
 
   state->cursor_theme = wl_cursor_theme_load(cursor_theme, size, state->shm);
@@ -600,7 +610,9 @@ void bread_wayland_cursor_init(wl_state_t *state) {
     bread_log_error("Failed to create cursor surface, cursor will be disabled");
     state->cursor_surface = null;
     state->current_cursor = null;
+    memset(state->cursors, 0, sizeof(state->cursors));
     wl_cursor_theme_destroy(state->cursor_theme);
+    state->cursor_theme = null;
     return;
   }
 
@@ -608,14 +620,19 @@ void bread_wayland_cursor_init(wl_state_t *state) {
 }
 
 void bread_wayland_cursor_cleanup(wl_state_t *state) {
-  if (state->cursor_theme)
+  if (state->cursor_theme) {
+    bread_log_debug("Cleaning up cursor theme");
     wl_cursor_theme_destroy(state->cursor_theme);
+    state->cursor_theme = null;
+  }
 
-  if (state->cursor_surface && state->cursor_surface != state->wl_surface)
+  if (state->cursor_surface) {
+    bread_log_debug("Cleaning up cursor surface");
     wl_surface_destroy(state->cursor_surface);
+    state->cursor_surface = null;
+  }
 
-  state->cursor_theme = null;
-  state->cursor_surface = null;
+  state->current_cursor = null;
 }
 
 void bread_wayland_set_cursor(wl_state_t *state, bread_cursor_type_t cursor) {

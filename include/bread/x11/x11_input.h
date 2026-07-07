@@ -21,17 +21,6 @@
 b32 bread_x11_xkb_init(x11_state_t *state);
 
 /**
- * @brief Cleans up the X11 xkb.
- *
- * @details Cleans up the xcb context, keymap, and state by unrefing them.
- *
- * @param state The state to clean up.
- *
- * @pre @c state must not be null.
- */
-void bread_x11_xkb_cleanup(x11_state_t *state);
-
-/**
  * @brief Converts an xcb mouse press detail to a bread mouse button.
  *
  * @details Converts the detail field of an xcb mouse press event to a bread

@@ -18,11 +18,11 @@ int main(void) {
       .arena = arena,
   };
 
-  bread_window_set_title(&window, "Test Window");
-  bread_window_set_min_size(&window, 100, 100);
-
   bread_window_set_event_callback(&window, bread_event_callback, NULL);
   bread_window_init(&window);
+
+  bread_window_set_title(&window, "Test Window");
+  bread_window_set_min_size(&window, 100, 100);
 
   while (bread_window_should_close(&window) == false) {
     bread_window_poll(&window);
