@@ -1,5 +1,23 @@
 {
   "nodes": {
+    "conjure": {
+      "inputs": {
+        "nixpkgs": "nixpkgs"
+      },
+      "locked": {
+        "lastModified": 1789377942,
+        "narHash": "sha256-jggH9J/N0dHkWpqiz8cwxGaJoiYXryv4qQ3VJv+fVsY=",
+        "ref": "refs/heads/main",
+        "rev": "1eb2fbb14f086ec7f988d9c16ad7af1b370d154a",
+        "revCount": 68,
+        "type": "git",
+        "url": "https://codeberg.org/h4rl/conjure.git"
+      },
+      "original": {
+        "type": "git",
+        "url": "https://codeberg.org/h4rl/conjure.git"
+      }
+    },
     "flake-utils": {
       "inputs": {
         "systems": "systems"
@@ -39,7 +57,7 @@
     "htils": {
       "inputs": {
         "flake-utils": "flake-utils_2",
-        "nixpkgs": "nixpkgs"
+        "nixpkgs": "nixpkgs_2"
       },
       "locked": {
         "lastModified": 1788579879,
@@ -57,6 +75,22 @@
     },
     "nixpkgs": {
       "locked": {
+        "lastModified": 1786514691,
+        "narHash": "sha256-9dkt1i5JNbEfPb+EjLcSDNs8zqEHQ/1JlSaKgj0SBAg=",
+        "owner": "nixos",
+        "repo": "nixpkgs",
+        "rev": "867dcbc30bafe3c862ef88620f2e7a109d7d3be5",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nixos",
+        "ref": "nixos-unstable",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "nixpkgs_2": {
+      "locked": {
         "lastModified": 1778443072,
         "narHash": "sha256-zi7/fsqM/kFdNuED//4WOCUtezGtKKqRNORjMvfwjnA=",
         "owner": "nixos",
@@ -71,7 +105,7 @@
         "type": "github"
       }
     },
-    "nixpkgs_2": {
+    "nixpkgs_3": {
       "locked": {
         "lastModified": 1788404924,
         "narHash": "sha256-lhEhY8X5EgkQ/eg6IFz4cc8jRuSYSvnxx1al7d1dvZ0=",
@@ -89,9 +123,10 @@
     },
     "root": {
       "inputs": {
+        "conjure": "conjure",
         "flake-utils": "flake-utils",
         "htils": "htils",
-        "nixpkgs": "nixpkgs_2"
+        "nixpkgs": "nixpkgs_3"
       }
     },
     "systems": {

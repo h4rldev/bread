@@ -654,6 +654,10 @@ void bread_wayland_set_cursor(wl_state_t *state, bread_cursor_type_t cursor) {
   if (!buffer)
     return;
 
+  bread_log_debug("cursor %s image %ux%u hotspot %u,%u", new_cursor->name,
+                  image->width, image->height, image->hotspot_x,
+                  image->hotspot_y);
+
   wl_pointer_set_cursor(state->pointer, state->pointer_serial,
                         state->cursor_surface, image->hotspot_x,
                         image->hotspot_y);

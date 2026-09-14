@@ -208,6 +208,7 @@ void bread_x11_cursor_init(x11_state_t *state) {
   static const char *cursor_fallbacks[] = {
       [BREAD_CURSOR_DEFAULT] = "left_ptr",
       [BREAD_CURSOR_POINTER] = "hand1",
+      [BREAD_CURSOR_HAND] = "hand2",
       [BREAD_CURSOR_TEXT] = "xterm",
       [BREAD_CURSOR_MOVE] = "fleur",
       [BREAD_CURSOR_RESIZE_EW] = "sb_h_double_arrow",

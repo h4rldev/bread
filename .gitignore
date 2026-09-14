@@ -1,10 +1,12 @@
 .cache
 .direnv
+.conjure
 
 bin
 lib
 out
 result
+main
 
 compile_commands.json
 src/wayland/

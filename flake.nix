@@ -5,12 +5,14 @@
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
     htils.url = "github:h4rldev/htils";
+    conjure.url = "git+https://codeberg.org/h4rl/conjure.git";
   };
 
   outputs = {
     nixpkgs,
     flake-utils,
     htils,
+    conjure,
     ...
   }:
     flake-utils.lib.eachDefaultSystem (system: let
@@ -23,14 +25,14 @@
         src = ./.;
 
         nativeBuildInputs = [
-          pkgs.just
           pkgs.gcc
           pkgs.mold
           pkgs.wayland-scanner
           pkgs.wayland-protocols
           pkgs.libxkbcommon
           pkgs.wayland
-          htils.packages.${system}.htils
+          htils.packages.${system}.htils-threadsafe
+          conjure.packages.${system}.default
         ];
 
         buildPhase = ''
@@ -44,8 +46,7 @@
           wayland-scanner client-header ${pkgs.wayland-protocols}/share/wayland-protocols/unstable/xdg-decoration/xdg-decoration-unstable-v1.xml ./include/wayland/xdg-decoration-client-protocol.h
           wayland-scanner private-code ${pkgs.wayland-protocols}/share/wayland-protocols/unstable/xdg-decoration/xdg-decoration-unstable-v1.xml ./src/wayland/xdg-decoration-client-protocol.c
 
-          sed -i 's|#!/usr/bin/env bash|#!${pkgs.bash}/bin/bash|' justfile
-          just release
+          conjure as wayland-release build
 
           runHook postBuild
         '';
@@ -53,10 +54,58 @@
         installPhase = ''
           runHook preInstall
 
-          mkdir -p $out/lib
+          mkdir -p $out/lib/pkgconfig
           mkdir -p $out/include/bread
 
-          cp lib/libbread-wayland-release.so $out/lib
+          sed -e "s|^prefix=.*|prefix=$out|" -e "s|^libdir=.*|libdir=$out/lib|" lib/wayland-release/pkgconfig/bread-wayland.pc > $out/lib/pkgconfig/bread-wayland.pc
+          cp lib/wayland-release/libbread-wayland.so $out/lib
+          cp -r include/bread/* $out/include/bread
+
+          runHook postInstall
+        '';
+      };
+
+      packages.bread-wayland-release-static = pkgs.stdenv.mkDerivation {
+        pname = "bread-wayland-static";
+        version = "0.1.0";
+
+        src = ./.;
+
+        nativeBuildInputs = [
+          pkgs.gcc
+          pkgs.mold
+          pkgs.wayland-scanner
+          pkgs.wayland-protocols
+          pkgs.libxkbcommon
+          pkgs.wayland
+          htils.packages.${system}.htils-threadsafe
+          conjure.packages.${system}.default
+        ];
+
+        buildPhase = ''
+          runHook preBuild
+
+          mkdir -p ./src/wayland
+          mkdir -p ./include/wayland
+
+          wayland-scanner client-header ${pkgs.wayland-protocols}/share/wayland-protocols/stable/xdg-shell/xdg-shell.xml ./include/wayland/xdg-shell-client-protocol.h
+          wayland-scanner private-code ${pkgs.wayland-protocols}/share/wayland-protocols/stable/xdg-shell/xdg-shell.xml ./src/wayland/xdg-shell-client-protocol.c
+          wayland-scanner client-header ${pkgs.wayland-protocols}/share/wayland-protocols/unstable/xdg-decoration/xdg-decoration-unstable-v1.xml ./include/wayland/xdg-decoration-client-protocol.h
+          wayland-scanner private-code ${pkgs.wayland-protocols}/share/wayland-protocols/unstable/xdg-decoration/xdg-decoration-unstable-v1.xml ./src/wayland/xdg-decoration-client-protocol.c
+
+          conjure as wayland-release-static build
+
+          runHook postBuild
+        '';
+
+        installPhase = ''
+          runHook preInstall
+
+          mkdir -p $out/lib/pkgconfig
+          mkdir -p $out/include/bread
+
+          sed -e "s|^prefix=.*|prefix=$out|" -e "s|^libdir=.*|libdir=$out/lib|" lib/wayland-release-static/pkgconfig/bread-wayland.pc > $out/lib/pkgconfig/bread-wayland-static.pc
+          cp lib/wayland-release-static/libbread-wayland.a $out/lib
           cp -r include/bread/* $out/include/bread
 
           runHook postInstall
@@ -70,13 +119,13 @@
         src = ./.;
 
         nativeBuildInputs = [
-          pkgs.just
           pkgs.gcc
           pkgs.wayland-scanner
           pkgs.wayland-protocols
           pkgs.libxkbcommon
           pkgs.wayland
-          htils.packages.${system}.htils
+          htils.packages.${system}.htils-threadsafe
+          conjure.packages.${system}.default
         ];
 
         buildPhase = ''
@@ -90,8 +139,7 @@
           wayland-scanner client-header ${pkgs.wayland-protocols}/share/wayland-protocols/unstable/xdg-decoration/xdg-decoration-unstable-v1.xml ./include/wayland/xdg-decoration-client-protocol.h
           wayland-scanner private-code ${pkgs.wayland-protocols}/share/wayland-protocols/unstable/xdg-decoration/xdg-decoration-unstable-v1.xml ./src/wayland/xdg-decoration-client-protocol.c
 
-          sed -i 's|#!/usr/bin/env bash|#!${pkgs.bash}/bin/bash|' justfile
-          just debug
+          conjure as wayland-debug build
 
           runHook postBuild
         '';
@@ -99,10 +147,11 @@
         installPhase = ''
           runHook preInstall
 
-          mkdir -p $out/lib
+          mkdir -p $out/lib/pkgconfig
           mkdir -p $out/include/bread
 
-          cp lib/libbread-wayland-debug.a $out/lib
+          sed -e "s|^prefix=.*|prefix=$out|" -e "s|^libdir=.*|libdir=$out/lib|" lib/wayland-debug/pkgconfig/bread-wayland-debug.pc > $out/lib/pkgconfig/bread-wayland-debug.pc
+          cp lib/wayland-debug/libbread-wayland-debug.a $out/lib
           cp -r include/bread/* $out/include/bread
 
           runHook postInstall
@@ -116,20 +165,19 @@
         src = ./.;
 
         nativeBuildInputs = [
-          pkgs.just
           pkgs.gcc
           pkgs.libxcb
           pkgs.libxcb-cursor
           pkgs.libxcb-wm
           pkgs.libxkbcommon
-          htils.packages.${system}.htils
+          htils.packages.${system}.htils-threadsafe
+          conjure.packages.${system}.default
         ];
 
         buildPhase = ''
           runHook preBuild
 
-          sed -i 's|#!/usr/bin/env bash|#!${pkgs.bash}/bin/bash|' justfile
-          just release x11
+          conjure as x11-release build
 
           runHook postBuild
         '';
@@ -137,10 +185,49 @@
         installPhase = ''
           runHook preInstall
 
-          mkdir -p $out/lib
+          mkdir -p $out/lib/pkgconfig
           mkdir -p $out/include/bread
 
-          cp lib/libbread-x11-release.so $out/lib
+          sed -e "s|^prefix=.*|prefix=$out|" -e "s|^libdir=.*|libdir=$out/lib|" lib/x11-release/pkgconfig/bread-x11.pc > $out/lib/pkgconfig/bread-x11.pc
+          cp lib/x11-release/libbread-x11.so $out/lib
+          cp -r include/bread/* $out/include/bread
+
+          runHook postInstall
+        '';
+      };
+
+      packages.bread-x11-release-static = pkgs.stdenv.mkDerivation {
+        pname = "bread-x11-static";
+        version = "0.1.0";
+
+        src = ./.;
+
+        nativeBuildInputs = [
+          pkgs.gcc
+          pkgs.libxcb
+          pkgs.libxcb-cursor
+          pkgs.libxcb-wm
+          pkgs.libxkbcommon
+          htils.packages.${system}.htils-threadsafe
+          conjure.packages.${system}.default
+        ];
+
+        buildPhase = ''
+          runHook preBuild
+
+          conjure as x11-release-static build
+
+          runHook postBuild
+        '';
+
+        installPhase = ''
+          runHook preInstall
+
+          mkdir -p $out/lib/pkgconfig
+          mkdir -p $out/include/bread
+
+          sed -e "s|^prefix=.*|prefix=$out|" -e "s|^libdir=.*|libdir=$out/lib|" lib/x11-release-static/pkgconfig/bread-x11.pc > $out/lib/pkgconfig/bread-x11-static.pc
+          cp lib/x11-release-static/libbread-x11.a $out/lib
           cp -r include/bread/* $out/include/bread
 
           runHook postInstall
@@ -154,20 +241,18 @@
         src = ./.;
 
         nativeBuildInputs = [
-          pkgs.just
           pkgs.gcc
           pkgs.libxcb
           pkgs.libxcb-cursor
           pkgs.libxcb-wm
           pkgs.libxkbcommon
-          htils.packages.${system}.htils
+          htils.packages.${system}.htils-threadsafe
         ];
 
         buildPhase = ''
           runHook preBuild
 
-          sed -i 's|#!/usr/bin/env bash|#!${pkgs.bash}/bin/bash|' justfile
-          just debug x11
+          conjure as x11-debug build
 
           runHook postBuild
         '';
@@ -175,10 +260,11 @@
         installPhase = ''
           runHook preInstall
 
-          mkdir -p $out/lib
+          mkdir -p $out/lib/pkgconfig
           mkdir -p $out/include/bread
 
-          cp lib/libbread-x11-debug.a $out/lib
+          sed -e "s|^prefix=.*|prefix=$out|" -e "s|^libdir=.*|libdir=$out/lib|" lib/x11-debug/pkgconfig/bread-x11-debug.pc > $out/lib/pkgconfig/bread-x11-debug.pc
+          cp lib/x11-debug/libbread-x11-debug.a $out/lib
           cp -r include/bread/* $out/include/bread
 
           runHook postInstall
@@ -198,7 +284,7 @@
           libxkbcommon
           wayland
           wayland-protocols
-          htils.packages.${system}.htils
+          htils.packages.${system}.htils-threadsafe
         ];
 
         nativeBuildInputs = with pkgs; [
@@ -209,10 +295,11 @@
         packages = with pkgs; [
           nixd
           bear
-          just
           clang-tools
           nix-index
           valgrind
+
+          conjure.packages.${system}.default
         ];
 
         shellHook = ''

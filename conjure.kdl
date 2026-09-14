@@ -1,0 +1,75 @@
+project {
+  name bread
+  language c
+  type library
+  link static
+
+  compile {
+    src "src/bread"
+    standard gnu11
+    include "include"
+  }
+
+  profiles {
+    wayland-debug {
+      artifact "bread-wayland-debug"
+
+      c_flags -DBREAD_DEBUG -DBREAD_WAYLAND -ggdb -g -Og -fsanitize=address,undefined,leak -fno-sanitize-recover=all -fno-omit-frame-pointer -fno-optimize-sibling-calls -fsanitize-address-use-after-scope -fno-common -static-libasan -Wall -Wextra -Wpedantic -Wno-unused-parameter
+      ld_flags -lwayland-client -lwayland-cursor -lxkbcommon -lhtils
+
+      src "src/wayland/" 
+
+      tests {
+        main {
+          src "src/test/main.c"
+        }
+      } 
+    }
+
+    wayland-release {
+      link dynamic
+      artifact "bread-wayland"
+
+      c_flags -DBREAD_WAYLAND -O2
+      ld_flags -lwayland-client -lwayland-cursor -lxkbcommon -lhtils
+
+      src "src/wayland/"
+    }
+
+
+    wayland-release-static {
+      extends wayland-release
+      link static
+    }
+
+    x11-debug {
+      artifact "bread-x11-debug"
+
+      c_flags -DBREAD_DEBUG -DBREAD_X11 -ggdb -g -Og -fsanitize=address,undefined,leak -fno-sanitize-recover=all -fno-omit-frame-pointer -fno-optimize-sibling-calls -fsanitize-address-use-after-scope -fno-common -static-libasan -Wall -Wextra -Wpedantic -Wno-unused-parameter
+      ld_flags -lxkbcommon -lxkbcommon-x11 -lxcb -lxcb-icccm -lxcb-cursor -lxcb-randr -lhtils
+
+      tests {
+        main {
+          src "src/test/main.c"
+        }
+      }
+    }
+
+    x11-release {
+      artifact "bread-x11"
+      link dynamic
+
+      c_flags -DBREAD_X11 -O2
+      ld_flags -lxkbcommon -lxkbcommon-x11 -lxcb -lxcb-icccm -lxcb-cursor -lxcb-randr -lhtils
+    }
+
+    x11-release-static {
+      extends x11-release
+      link static
+    }
+  }
+
+  output {
+    symlink_binaries #true
+  }
+}
