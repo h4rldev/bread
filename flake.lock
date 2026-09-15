@@ -79,11 +79,11 @@
         "nixpkgs": "nixpkgs_3"
       },
       "locked": {
-        "lastModified": 1789461670,
-        "narHash": "sha256-Ypl6qKLT8EsacElkauWcVjcmargO+9YGizaw5lCHcM0=",
+        "lastModified": 1789462275,
+        "narHash": "sha256-7iVmM96PiqeYJkFRRFN7XrUoSqIA/N1/nQ8mQNIsd3s=",
         "owner": "h4rldev",
         "repo": "htils",
-        "rev": "0af873984153b3ce0b5b48a2cf1508d0f9030839",
+        "rev": "628a684734ac35e2b3626c09a88a2dd28bc3825b",
         "type": "github"
       },
       "original": {
