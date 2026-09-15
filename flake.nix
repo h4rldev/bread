@@ -247,6 +247,7 @@
           pkgs.libxcb-wm
           pkgs.libxkbcommon
           htils.packages.${system}.htils-threadsafe
+          conjure.packages.${system}.default
         ];
 
         buildPhase = ''
