@@ -287,6 +287,8 @@ static void x11_poll_events(bread_window_t *window) {
       if (state->width != cfg->width || state->height != cfg->height) {
         state->width = cfg->width;
         state->height = cfg->height;
+        state->window->width = (u16)state->width;
+        state->window->height = (u16)state->height;
 
         bread_event_t ev = {0};
         ev.type = BREAD_EVENT_WINDOW_RESIZE;

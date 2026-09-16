@@ -85,6 +85,8 @@ static void xdg_toplevel_configure(void *data, xdg_toplevel_t *toplevel,
     bread_log_debug("Setting window size to %d x %d", width, height);
     state->width = (u16)(width > 65535 ? 65535 : width);
     state->height = (u16)(height > 65535 ? 65535 : height);
+    state->window->width = state->width;
+    state->window->height = state->height;
 
     bread_event_t event = {0};
     event.type = BREAD_EVENT_WINDOW_RESIZE;
