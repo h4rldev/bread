@@ -241,13 +241,10 @@ static void pointer_enter(void *data, wl_pointer_t *pointer, u32 serial,
 
 /**
  * @brief Handles the pointer leave event.
- * @details Only updates the pointer serial, and is otherwise noop.
+ * @details A no-op; the cursor serial is only refreshed on enter.
  */
 static void pointer_leave(void *data, wl_pointer_t *pointer, u32 serial,
-                          wl_surface_t *surface) {
-  wl_state_t *state = data;
-  state->pointer_serial = serial;
-}
+                          wl_surface_t *surface) {}
 
 /**
  * @brief Handles the pointer motion event.
@@ -314,7 +311,6 @@ static void pointer_button(void *data, wl_pointer_t *pointer, u32 serial,
   bread_log_debug("Got mouse button %d", bread_button);
   b32 pressed = pointer_state == WL_POINTER_BUTTON_STATE_PRESSED;
   state->input.mouse_buttons[bread_button] = pressed;
-  state->pointer_serial = serial;
 
   bread_log_debug("Emitting mouse button press");
   bread_event_t event = {
