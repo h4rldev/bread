@@ -266,13 +266,11 @@ void bread_x11_set_cursor(x11_state_t *state, bread_cursor_type_t cursor) {
     return;
 
   xcb_cursor_t new_cursor = state->cursors[cursor];
-  if (new_cursor) {
-    u32 values[] = {new_cursor};
-    xcb_change_window_attributes(state->connection, state->xcb_window,
-                                 XCB_CW_CURSOR, values);
-    xcb_flush(state->connection);
-    state->current_cursor = new_cursor;
-  }
+  u32 values[] = {new_cursor};
+  xcb_change_window_attributes(state->connection, state->xcb_window,
+                               XCB_CW_CURSOR, values);
+  xcb_flush(state->connection);
+  state->current_cursor = new_cursor;
 }
 
 #endif // !BREAD_X11
