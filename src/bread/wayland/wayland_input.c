@@ -349,9 +349,9 @@ static void pointer_axis(void *data, wl_pointer_t *pointer, u32 time, u32 axis,
 
   if (axis == WL_POINTER_AXIS_VERTICAL_SCROLL) {
     bread_log_debug("Scrolling vertically");
-    state->input.scroll_y += dv;
+    state->input.scroll_y -= dv;
     event.data.mouse_scroll.dx = 0.0f;
-    event.data.mouse_scroll.dy = dv;
+    event.data.mouse_scroll.dy = -dv;
   } else if (axis == WL_POINTER_AXIS_HORIZONTAL_SCROLL) {
     bread_log_debug("Scrolling horizontally");
     state->input.scroll_x += dv;

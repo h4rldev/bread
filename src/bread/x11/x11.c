@@ -333,7 +333,7 @@ static void x11_poll_events(bread_window_t *window) {
         bread_event_t ev = {0};
         ev.type = BREAD_EVENT_MOUSE_SCROLL;
         ev.data.mouse_scroll.dx = 0.0;
-        ev.data.mouse_scroll.dy = (button->detail == 4) ? -1.0 : 1.0;
+        ev.data.mouse_scroll.dy = (button->detail == 4) ? 1.0 : -1.0;
         fire_event(state->window, &ev);
         break;
       }

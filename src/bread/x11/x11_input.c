@@ -137,13 +137,13 @@ void bread_x11_handle_button_press(x11_state_t *state,
   bread_log_debug("Handling mouse button press");
   if (event->detail == 4) {
     bread_log_debug("Scrolling up");
-    state->input.scroll_y -= 1.0f;
+    state->input.scroll_y += 1.0f;
     return;
   }
 
   if (event->detail == 5) {
     bread_log_debug("Scrolling down");
-    state->input.scroll_y += 1.0f;
+    state->input.scroll_y -= 1.0f;
     return;
   }
 
