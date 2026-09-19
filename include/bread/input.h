@@ -1,11 +1,15 @@
 #ifndef BREAD_INPUT_H
 #define BREAD_INPUT_H
 
+/*************************************************/
+
 #include <htils/basictypes.h>
 
 #include <bread/event.h>
 #include <bread/types.h>
 #include <bread/window.h>
+
+/*************************************************/
 
 /**
  * @brief Get the current input state of the window.
@@ -22,6 +26,10 @@
  * @return The input state of the window.
  */
 bread_input_state_t bread_window_get_input(bread_window_t *window);
+
+//
+//
+//
 
 /**
  * @brief Convert a bread event key to a unicode codepoint.
@@ -42,6 +50,10 @@ bread_input_state_t bread_window_get_input(bread_window_t *window);
  */
 u32 bread_event_key_to_unicode(bread_window_t *window, bread_event_t *event);
 
+//
+//
+//
+
 /**
  * @brief Convert a bread event key to a C-string.
  *
@@ -57,16 +69,52 @@ u32 bread_event_key_to_unicode(bread_window_t *window, bread_event_t *event);
  * bread_window_init(), and you must have polled the window through @ref
  * bread_window_poll() at least once.
  *
- * @return The C-string representation of the key, or nullif the key wasn't a
+ * @return The C-string representation of the key, or null if the key wasn't a
  * valid key.
  *
  * @see bread_event_key_to_unicode().
  */
 cstr *bread_event_key_to_cstr(bread_window_t *window, bread_event_t *event);
 
+//
+//
+//
+
+/**
+ * @brief Initializes the window cursor.
+ *
+ * @details Loads the backend cursor theme and applies the default cursor.
+ *
+ * @param window The window to initialize the cursor for.
+ *
+ * @pre @c window must be a valid pointer and properly initialized through @ref
+ * bread_window_init().
+ *
+ * @see @ref bread_cursor_cleanup().
+ */
 void bread_cursor_init(bread_window_t *window);
 
+//
+//
+//
+
+/**
+ * @brief Cleans up the window cursor.
+ *
+ * @details Frees the backend cursor resources.
+ *
+ * @param window The window to clean up the cursor for.
+ *
+ * @pre @c window must be a valid pointer and properly initialized through @ref
+ * bread_window_init().
+ *
+ * @see @ref bread_cursor_init().
+ */
 void bread_cursor_cleanup(bread_window_t *window);
+
+//
+//
+//
 
 /**
  * @brief Set the current pointer cursor

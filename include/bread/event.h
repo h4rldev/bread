@@ -1,10 +1,14 @@
 #ifndef BREAD_EVENT_H
 #define BREAD_EVENT_H
 
+/*************************************************/
+
 #include <htils/basictypes.h>
 
 #include <bread/types.h>
 #include <bread/window.h>
+
+/*************************************************/
 
 /**
  * @brief Set the event callback of the window.
@@ -28,6 +32,10 @@ void bread_window_set_event_callback(bread_window_t *window,
                                      bread_event_callback_t callback,
                                      void *userdata);
 
+//
+//
+//
+
 /**
  * @brief Fire an event.
  *
@@ -43,6 +51,6 @@ void bread_window_set_event_callback(bread_window_t *window,
  * bread_window_init().
  * - @c event must be a valid pointer to a valid event.
  */
-void fire_event(bread_window_t *window, bread_event_t *event);
+void bread_fire_event(bread_window_t *window, bread_event_t *event);
 
 #endif

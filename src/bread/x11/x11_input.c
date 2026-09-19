@@ -1,4 +1,6 @@
-#include <bread/x11/x11.h>
+/*************************************************/
+
+#include <bread/x11/x11_input.h>
 
 #if BREAD_X11
 
@@ -11,7 +13,10 @@
 #include <bread/input.h>
 #include <bread/log.h>
 #include <bread/window.h>
-#include <bread/x11/x11_input.h>
+
+#include <bread/x11/x11.h>
+
+/*************************************************/
 
 b32 bread_x11_xkb_init(x11_state_t *state) {
   bread_log_debug("Initializing X11 xkb");

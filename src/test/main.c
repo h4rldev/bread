@@ -18,7 +18,7 @@ int main(void) {
       .arena = arena,
   };
 
-  bread_window_set_event_callback(&window, bread_event_callback, NULL);
+  bread_window_set_event_callback(&window, bread_event_callback, null);
   bread_window_init(&window);
 
   bread_window_set_title(&window, "Test Window");

@@ -1,4 +1,7 @@
-#include <bread/backend.h>
+/*************************************************/
+
+#include <htils/basictypes.h>
+
 #include <bread/input.h>
 #include <bread/log.h>
 #include <bread/types.h>
@@ -14,6 +17,16 @@ extern const bread_backend_vtable_t bread_wayland_backend;
 extern const bread_backend_vtable_t bread_x11_backend;
 #endif
 
+/*************************************************/
+
+/**
+ * @brief Gets the backend vtable for the current build.
+ *
+ * @details Returns the wayland or x11 vtable only when all of its required
+ * functions are set, otherwise null.
+ *
+ * @return The backend vtable, or null when the backend is incomplete.
+ */
 static const bread_backend_vtable_t *get_backend_vtable(void) {
 #if BREAD_WAYLAND
   if (!bread_wayland_backend.destroy || !bread_wayland_backend.init ||
@@ -36,6 +49,10 @@ static const bread_backend_vtable_t *get_backend_vtable(void) {
 #endif
 }
 
+//
+//
+//
+
 void bread_window_init(bread_window_t *window) {
   if (!window) {
     bread_log_error("Missing values, can't init window");
@@ -57,7 +74,7 @@ void bread_window_init(bread_window_t *window) {
   bread_cursor_init(window);
 }
 
-void bread_window_set_title(bread_window_t *window, const char *title) {
+void bread_window_set_title(bread_window_t *window, const cstr *title) {
   if (!window || !window->backend || !title) {
     bread_log_error("Missing values, can't set title");
     return;
@@ -175,4 +192,21 @@ bread_backend_type_t bread_get_backend_type(void) {
   }
 
   return backend_vtable->backend_type;
+}
+
+void bread_clipboard_set(bread_window_t *window, const cstr *text) {
+  if (!window || !window->backend)
+    return;
+  const bread_backend_vtable_t *vt = get_backend_vtable();
+  if (vt && vt->clipboard_set)
+    vt->clipboard_set(window, text);
+}
+
+const cstr *bread_clipboard_get(bread_window_t *window) {
+  if (!window || !window->backend)
+    return null;
+  const bread_backend_vtable_t *vt = get_backend_vtable();
+  if (!vt || !vt->clipboard_get)
+    return null;
+  return vt->clipboard_get(window);
 }

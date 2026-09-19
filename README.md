@@ -1,8 +1,6 @@
 # bread
 
-A platform/windowing layer in C, with backends for Wayland and X11 (XCB). Part
-of the `htils` `bread` `butter` `cheese` stack; `butter` (Vulkan renderer) binds
-its surface to a `bread` window, and `cheese` (immediate-mode UI) sits on top.
+A platform/windowing layer in C, with backends for Wayland and X11 (XCB).
 
 ## Status
 
@@ -16,8 +14,7 @@ Chosen by which library is built (`BREAD_WAYLAND` / `BREAD_X11`):
 - Wayland (via `xdg-shell`), with `xdg-decoration` support
 - X11 (XCB)
 
-`bread_get_backend_type()` reports the active backend, and `bread_current_backend`
-exposes its vtable.
+`bread_get_backend_type()` reports the active backend.
 
 ## Features
 
@@ -27,15 +24,18 @@ exposes its vtable.
   surface to a renderer (`bread_window_get_surface`).
 - **Event loop**: `bread_window_poll` + `bread_window_should_close` drive the
   loop; a callback (`bread_window_set_event_callback`) receives `bread_event_t`
-  close, mouse-move, key-press and resize events.
+  close, resize, key, mouse and scroll events.
 - **Input**: key events to unicode/string (`bread_event_key_to_unicode`,
   `bread_event_key_to_cstr`), and the current keyboard/mouse state
   (`bread_window_get_input`).
+- **Clipboard**: read and write the selection as text (`bread_clipboard_get`,
+  `bread_clipboard_set`), native to each backend.
 - **Cursors**: a set of standard cursors (`bread_cursor_type_t`,
   `bread_set_cursor`) loaded from the user's cursor theme, set up and torn down
   with the window.
 - **Backend abstraction**: a `bread_backend_vtable_t` so both platforms share one
   window/event/input API.
+
 
 ## Building
 
@@ -64,8 +64,9 @@ nix develop
 
 ## Tests
 
-`src/test` holds a small windowed example. Build it with
-`conjure test -p wayland-debug` (or `x11-debug`).
+`src/test` holds a small windowed example (`main`) and an interactive clipboard
+test (`clipboard`). Build them with `conjure test -p wayland-debug` (or
+`x11-debug`).
 
 ## License
 

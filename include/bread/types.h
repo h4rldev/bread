@@ -1,9 +1,13 @@
 #ifndef BREAD_TYPES_H
 #define BREAD_TYPES_H
 
+/*************************************************/
+
 #include <htils/arena.h>
 #include <htils/basictypes.h>
 #include <htils/string.h>
+
+/*************************************************/
 
 /**
  * @brief The window surface.
@@ -15,6 +19,10 @@ typedef struct bread_surface {
   void *handle;
   void *display;
 } bread_surface_t;
+
+//
+//
+//
 
 /**
  * @brief A bread key map.
@@ -166,6 +174,10 @@ typedef enum bread_mouse_button {
   BREAD_MOUSE_BUTTON_MAX
 } bread_mouse_button_t;
 
+//
+//
+//
+
 /**
  * @brief The input state of the window.
  *
@@ -185,6 +197,10 @@ typedef struct {
   f64 scroll_y;
 } bread_input_state_t;
 
+//
+//
+//
+
 /**
  * @brief The cursor type.
  *
@@ -197,7 +213,7 @@ typedef struct {
  * @param BREAD_CURSOR_RESIZE_NS The vertical resize cursor (north-south).
  * @param BREAD_CURSOR_RESIZE_NESW The diagonal resize cursor
  * (northeast-southwest).
- * @param BREAD_CURSOR_RESIZE_NWSE The anti-diagonal resize cu<rsor
+ * @param BREAD_CURSOR_RESIZE_NWSE The anti-diagonal resize cursor
  * (northwest-southeast).
  * @param BREAD_CURSOR_NOT_ALLOWED The not allowed cursor.
  * @param BREAD_CURSOR_WAIT The wait cursor.
@@ -218,6 +234,10 @@ typedef enum bread_cursor_type {
   BREAD_CURSOR_MAX
 } bread_cursor_type_t;
 
+//
+//
+//
+
 /**
  * @brief The event type of the window.
  *
@@ -234,7 +254,7 @@ typedef enum bread_cursor_type {
  * @note If any other events are needed, they'll be added here.
  */
 typedef enum {
-  BREAD_EVENT_NONE = 0,
+  BREAD_EVENT_NONE,
   BREAD_EVENT_WINDOW_CLOSE,
   BREAD_EVENT_WINDOW_RESIZE,
   BREAD_EVENT_KEY_PRESS,
@@ -244,6 +264,10 @@ typedef enum {
   BREAD_EVENT_MOUSE_RELEASE,
   BREAD_EVENT_MOUSE_SCROLL,
 } bread_event_type_t;
+
+//
+//
+//
 
 /**
  * @brief An event of the window.
@@ -276,6 +300,10 @@ typedef struct {
   } data;
 } bread_event_t;
 
+//
+//
+//
+
 /**
  * @brief The backend type of the bread build.
  *
@@ -292,6 +320,10 @@ typedef enum bread_backend {
   BREAD_BACKEND_MAX
 } bread_backend_type_t;
 
+//
+//
+//
+
 /**
  * @brief The callback function signature for the window events.
  *
@@ -301,6 +333,10 @@ typedef enum bread_backend {
  * @note This is passed to the @ref bread_window_set_event_callback() function.
  */
 typedef void (*bread_event_callback_t)(bread_event_t *event, void *userdata);
+
+//
+//
+//
 
 /**
  * @brief The window struct.
@@ -336,6 +372,10 @@ typedef struct bread_window {
   void *event_userdata;
 } bread_window_t;
 
+//
+//
+//
+
 /**
  * @brief The backend vtable of the window, exposing the functionality of each
  * backend, based on build.
@@ -347,6 +387,8 @@ typedef struct bread_window {
  * @param get_surface The get_surface function of the backend.
  * @param set_title The set_title function of the backend.
  * @param set_min_size The set_min_size function of the backend.
+ * @param clipboard_set The clipboard_set function of the backend.
+ * @param clipboard_get The clipboard_get function of the backend.
  * @param backend_type The backend type of the bread build.
  */
 typedef struct {
@@ -357,8 +399,14 @@ typedef struct {
   bread_surface_t (*get_surface)(bread_window_t *window);
   void (*set_title)(bread_window_t *window, const char *title);
   void (*set_min_size)(bread_window_t *window, u16 width, u16 height);
+  void (*clipboard_set)(bread_window_t *window, const cstr *text);
+  const cstr *(*clipboard_get)(bread_window_t *window);
   bread_backend_type_t backend_type;
 } bread_backend_vtable_t;
+
+//
+//
+//
 
 /**
  * @brief The log level of the bread build.

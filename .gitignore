@@ -7,6 +7,7 @@ lib
 out
 result
 main
+clipboard
 
 compile_commands.json
 src/wayland/

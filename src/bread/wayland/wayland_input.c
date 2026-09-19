@@ -1,3 +1,5 @@
+/*************************************************/
+
 #include <bread/wayland/wayland.h>
 
 #if BREAD_WAYLAND
@@ -13,7 +15,48 @@
 #include <bread/event.h>
 #include <bread/input.h>
 #include <bread/log.h>
+#include <bread/wayland/wayland_clipboard.h>
 #include <bread/wayland/wayland_input.h>
+
+/*************************************************/
+
+/**
+ * @brief Maps bread cursor types to wayland cursor theme names.
+ */
+static const cstr *cursor_names[] = {
+    [BREAD_CURSOR_DEFAULT] = "default",
+    [BREAD_CURSOR_POINTER] = "pointer",
+    [BREAD_CURSOR_HAND] = "grabbing",
+    [BREAD_CURSOR_TEXT] = "text",
+    [BREAD_CURSOR_MOVE] = "move",
+    [BREAD_CURSOR_RESIZE_EW] = "ew-resize",
+    [BREAD_CURSOR_RESIZE_NS] = "ns-resize",
+    [BREAD_CURSOR_RESIZE_NESW] = "nesw-resize",
+    [BREAD_CURSOR_RESIZE_NWSE] = "nwse-resize",
+    [BREAD_CURSOR_NOT_ALLOWED] = "not-allowed",
+    [BREAD_CURSOR_WAIT] = "wait",
+};
+
+/**
+ * @brief Maps bread cursor types to fallback wayland cursor theme names.
+ */
+static const char *cursor_fallbacks[] = {
+    [BREAD_CURSOR_DEFAULT] = "left_ptr",
+    [BREAD_CURSOR_POINTER] = "hand1",
+    [BREAD_CURSOR_HAND] = "hand2",
+    [BREAD_CURSOR_TEXT] = "xterm",
+    [BREAD_CURSOR_MOVE] = "fleur",
+    [BREAD_CURSOR_RESIZE_EW] = "sb_h_double_arrow",
+    [BREAD_CURSOR_RESIZE_NS] = "sb_v_double_arrow",
+    [BREAD_CURSOR_RESIZE_NESW] = "fd_double_arrow",
+    [BREAD_CURSOR_RESIZE_NWSE] = "bd_double_arrow",
+    [BREAD_CURSOR_NOT_ALLOWED] = "x_cursor",
+    [BREAD_CURSOR_WAIT] = "watch",
+};
+
+//
+//
+//
 
 /**
  * @brief Initializes the keyboard keymap for wayland.
@@ -44,7 +87,7 @@ static void keyboard_keymap(void *data, wl_keyboard_t *keyboard, u32 format,
     return;
   }
 
-  char *map = mmap(NULL, size, PROT_READ, MAP_SHARED, fd, 0);
+  char *map = mmap(null, size, PROT_READ, MAP_SHARED, fd, 0);
   close(fd);
 
   if (map == MAP_FAILED) {
@@ -88,12 +131,24 @@ static void keyboard_keymap(void *data, wl_keyboard_t *keyboard, u32 format,
   state->xkb_state = xkb_state;
 }
 
+//
+//
+//
+
 /**
  * @brief Handles the keyboard enter event.
- * @note Noop because we don't need to handle keyboard_enter.
+ * @note Mostly a no-op because we don't need to handle keyboard_enter more than
+ * setting the serial.
  */
 static void keyboard_enter(void *data, wl_keyboard_t *keyboard, u32 serial,
-                           wl_surface_t *surface, wl_array_t *keys) {}
+                           wl_surface_t *surface, wl_array_t *keys) {
+  wl_state_t *state = (wl_state_t *)data;
+  state->input_serial = serial;
+}
+
+//
+//
+//
 
 /**
  * @brief Handles the keyboard leave event.
@@ -113,6 +168,10 @@ static void keyboard_leave(void *data, wl_keyboard_t *keyboard, u32 serial,
   wl_state_t *state = data;
   memset(state->input.keys, 0, sizeof(state->input.keys));
 }
+
+//
+//
+//
 
 /**
  * @brief Handles the keyboard key event.
@@ -136,6 +195,7 @@ static void keyboard_key(void *data, wl_keyboard_t *keyboard, u32 serial,
                          u32 time, u32 key, u32 keystate) {
   bread_log_debug("Handling keyboard key");
   wl_state_t *state = data;
+  state->input_serial = serial;
 
   bread_log_debug("Converting key to bread key");
   bread_key_t bread_key = bread_evdev_to_key(key);
@@ -153,8 +213,12 @@ static void keyboard_key(void *data, wl_keyboard_t *keyboard, u32 serial,
   event.type = pressed ? BREAD_EVENT_KEY_PRESS : BREAD_EVENT_KEY_RELEASE;
   event.data.key.key = bread_key;
   event.data.key.raw_keycode = key;
-  fire_event(state->window, &event);
+  bread_fire_event(state->window, &event);
 }
+
+//
+//
+//
 
 /**
  * @brief Handles the keyboard modifiers event.
@@ -187,12 +251,20 @@ static void keyboard_modifiers(void *data, wl_keyboard_t *keyboard, u32 serial,
   }
 }
 
+//
+//
+//
+
 /**
  * @brief Handles the keyboard repeat info event.
  * @details Noop because we don't need to handle keyboard_repeat_info.
  */
 static void keyboard_repeat_info(void *data, wl_keyboard_t *keyboard, i32 rate,
                                  i32 delay) {}
+
+//
+//
+//
 
 /**
  * @brief The keyboard listener.
@@ -208,6 +280,10 @@ static const wl_keyboard_listener_t keyboard_listener = {
     .modifiers = keyboard_modifiers,
     .repeat_info = keyboard_repeat_info,
 };
+
+//
+//
+//
 
 /**
  * @brief Handles the pointer enter event.
@@ -239,12 +315,20 @@ static void pointer_enter(void *data, wl_pointer_t *pointer, u32 serial,
   bread_wayland_set_cursor(state, BREAD_CURSOR_DEFAULT);
 }
 
+//
+//
+//
+
 /**
  * @brief Handles the pointer leave event.
  * @details A no-op; the cursor serial is only refreshed on enter.
  */
 static void pointer_leave(void *data, wl_pointer_t *pointer, u32 serial,
                           wl_surface_t *surface) {}
+
+//
+//
+//
 
 /**
  * @brief Handles the pointer motion event.
@@ -276,8 +360,12 @@ static void pointer_motion(void *data, wl_pointer_t *pointer, u32 time,
   };
   event.data.mouse_move.x = state->input.mouse_x;
   event.data.mouse_move.y = state->input.mouse_y;
-  fire_event(state->window, &event);
+  bread_fire_event(state->window, &event);
 }
+
+//
+//
+//
 
 /**
  * @brief Handles the pointer button event.
@@ -317,8 +405,12 @@ static void pointer_button(void *data, wl_pointer_t *pointer, u32 serial,
       .type = pressed ? BREAD_EVENT_MOUSE_PRESS : BREAD_EVENT_MOUSE_RELEASE,
   };
   event.data.mouse_button.button = bread_button;
-  fire_event(state->window, &event);
+  bread_fire_event(state->window, &event);
 }
+
+//
+//
+//
 
 /**
  * @brief Handles the pointer axis event.
@@ -360,14 +452,22 @@ static void pointer_axis(void *data, wl_pointer_t *pointer, u32 time, u32 axis,
   } else
     return;
 
-  fire_event(state->window, &event);
+  bread_fire_event(state->window, &event);
 }
+
+//
+//
+//
 
 /**
  * @brief Handles the pointer frame event.
  * @details Noop because we don't need to handle pointer_frame.
  */
 static void pointer_frame(void *data, wl_pointer_t *pointer) {}
+
+//
+//
+//
 
 /**
  * @brief Handles the pointer axis source event.
@@ -376,6 +476,10 @@ static void pointer_frame(void *data, wl_pointer_t *pointer) {}
 static void pointer_axis_source(void *data, wl_pointer_t *pointer,
                                 u32 axis_source) {}
 
+//
+//
+//
+
 /**
  * @brief Handles the pointer axis stop event.
  * @details Noop because we don't need to handle pointer_axis_stop.
@@ -383,12 +487,20 @@ static void pointer_axis_source(void *data, wl_pointer_t *pointer,
 static void pointer_axis_stop(void *data, wl_pointer_t *pointer, u32 time,
                               u32 axis) {}
 
+//
+//
+//
+
 /**
  * @brief Handles the pointer axis discrete event.
  * @details Noop because we don't need to handle pointer_axis_discrete.
  */
 static void pointer_axis_discrete(void *data, wl_pointer_t *pointer, u32 axis,
                                   i32 discrete) {}
+
+//
+//
+//
 
 /**
  * @brief The pointer listener.
@@ -407,6 +519,10 @@ static const wl_pointer_listener_t pointer_listener = {
     .axis_stop = pointer_axis_stop,
     .axis_discrete = pointer_axis_discrete,
 };
+
+//
+//
+//
 
 /**
  * @brief Handles the seat capabilities event.
@@ -436,7 +552,7 @@ static void seat_capabilities(void *data, wl_seat_t *seat, u32 capabilities) {
   } else if (!has_pointer && state->pointer) {
     bread_log_debug("Releasing pointer");
     wl_pointer_release(state->pointer);
-    state->pointer = NULL;
+    state->pointer = null;
   }
 
   if (has_keyboard && !state->keyboard) {
@@ -450,11 +566,19 @@ static void seat_capabilities(void *data, wl_seat_t *seat, u32 capabilities) {
   }
 }
 
+//
+//
+//
+
 /**
  * @brief Seat name.
  * @details Noop because we don't need to handle seat_name.
  */
 static void seat_name(void *data, wl_seat_t *seat, const cstr *name) {}
+
+//
+//
+//
 
 /**
  * @brief The seat listener.
@@ -465,6 +589,10 @@ static const wl_seat_listener_t seat_listener = {
     .capabilities = seat_capabilities,
     .name = seat_name,
 };
+
+//
+//
+//
 
 void bread_wayland_seat_init(wl_state_t *state) {
   bread_log_debug("Initializing wayland seat");
@@ -519,34 +647,6 @@ void bread_wayland_seat_cleanup(wl_state_t *state) {
     state->xkb_context = null;
   }
 }
-
-static const cstr *cursor_names[] = {
-    [BREAD_CURSOR_DEFAULT] = "default",
-    [BREAD_CURSOR_POINTER] = "pointer",
-    [BREAD_CURSOR_HAND] = "grabbing",
-    [BREAD_CURSOR_TEXT] = "text",
-    [BREAD_CURSOR_MOVE] = "move",
-    [BREAD_CURSOR_RESIZE_EW] = "ew-resize",
-    [BREAD_CURSOR_RESIZE_NS] = "ns-resize",
-    [BREAD_CURSOR_RESIZE_NESW] = "nesw-resize",
-    [BREAD_CURSOR_RESIZE_NWSE] = "nwse-resize",
-    [BREAD_CURSOR_NOT_ALLOWED] = "not-allowed",
-    [BREAD_CURSOR_WAIT] = "wait",
-};
-
-static const char *cursor_fallbacks[] = {
-    [BREAD_CURSOR_DEFAULT] = "left_ptr",
-    [BREAD_CURSOR_POINTER] = "hand1",
-    [BREAD_CURSOR_HAND] = "hand2",
-    [BREAD_CURSOR_TEXT] = "xterm",
-    [BREAD_CURSOR_MOVE] = "fleur",
-    [BREAD_CURSOR_RESIZE_EW] = "sb_h_double_arrow",
-    [BREAD_CURSOR_RESIZE_NS] = "sb_v_double_arrow",
-    [BREAD_CURSOR_RESIZE_NESW] = "fd_double_arrow",
-    [BREAD_CURSOR_RESIZE_NWSE] = "bd_double_arrow",
-    [BREAD_CURSOR_NOT_ALLOWED] = "x_cursor",
-    [BREAD_CURSOR_WAIT] = "watch",
-};
 
 void bread_wayland_cursor_init(wl_state_t *state) {
   const cstr *cursor_theme = getenv("HYPRCURSOR_THEME");

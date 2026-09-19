@@ -1,3 +1,5 @@
+/*************************************************/
+
 #include <bread/x11/x11.h>
 
 #if BREAD_X11
@@ -8,14 +10,16 @@
 #include <htils/arena.h>
 #include <htils/string.h>
 
-#include <bread/backend.h>
 #include <bread/log.h>
 #include <bread/types.h>
 #include <bread/window.h>
+#include <bread/x11/x11_clipboard.h>
 #include <bread/x11/x11_input.h>
 
 #include <xcb/xcb.h>
 #include <xcb/xcb_icccm.h>
+
+/*************************************************/
 
 /**
  * @brief Interns an atom.
@@ -34,7 +38,7 @@ static xcb_atom_t intern_atom(xcb_connection_t *conn, const cstr *name) {
 
   xcb_intern_atom_cookie_t cookie =
       xcb_intern_atom(conn, 0, strlen(name), name);
-  xcb_intern_atom_reply_t *reply = xcb_intern_atom_reply(conn, cookie, NULL);
+  xcb_intern_atom_reply_t *reply = xcb_intern_atom_reply(conn, cookie, null);
 
   xcb_atom_t atom = XCB_ATOM_NONE;
   if (reply) {
@@ -45,6 +49,10 @@ static xcb_atom_t intern_atom(xcb_connection_t *conn, const cstr *name) {
 
   return atom;
 }
+
+//
+//
+//
 
 /**
  * @brief Cleans up the X11 state.
@@ -60,6 +68,9 @@ static xcb_atom_t intern_atom(xcb_connection_t *conn, const cstr *name) {
  */
 static void x11_state_cleanup(x11_state_t *state) {
   bread_log_debug("Cleaning up x11 state");
+
+  bread_x11_clipboard_cleanup(state);
+
   if (state->xcb_window) {
     bread_log_debug("Destroying window");
     xcb_destroy_window(state->connection, state->xcb_window);
@@ -91,6 +102,10 @@ static void x11_state_cleanup(x11_state_t *state) {
   }
 }
 
+//
+//
+//
+
 /**
  * @brief Initializes the X11 window.
  *
@@ -99,9 +114,9 @@ static void x11_state_cleanup(x11_state_t *state) {
  *
  * @param window The window to initialize.
  *
- * @pre @c window must be valid and created by @ref bread_window_new().
+ * @pre @c window must be valid and created by @ref bread_window_init().
  *
- * @see @ref bread_window_new().
+ * @see @ref bread_window_init()().
  */
 static void x11_init(bread_window_t *window) {
   bread_log_debug("Initializing x11 window");
@@ -128,12 +143,12 @@ static void x11_init(bread_window_t *window) {
 
   int screen_num = 0;
   bread_log_debug("Connecting to X server");
-  state->connection = xcb_connect(NULL, &screen_num);
+  state->connection = xcb_connect(null, &screen_num);
   int has_error = xcb_connection_has_error(state->connection);
   if (has_error) {
     bread_log_error("Failed to connect to X server: %d", has_error);
     xcb_disconnect(state->connection);
-    window->backend = NULL;
+    window->backend = null;
     return;
   }
 
@@ -191,6 +206,14 @@ static void x11_init(bread_window_t *window) {
   state->wm_delete_window = intern_atom(state->connection, "WM_DELETE_WINDOW");
   bread_log_debug("Setting intern _NET_WM_NAME");
   state->net_wm_name = intern_atom(state->connection, "_NET_WM_NAME");
+  bread_log_debug("Setting intern CLIPBOARD");
+  state->clipboard_atom = intern_atom(state->connection, "CLIPBOARD");
+  bread_log_debug("Setting intern UTF8_STRING");
+  state->utf8_atom = intern_atom(state->connection, "UTF8_STRING");
+  bread_log_debug("Setting intern TARGETS");
+  state->targets_atom = intern_atom(state->connection, "TARGETS");
+  bread_log_debug("Setting intern BREAD_CLIPBOARD");
+  state->prop_atom = intern_atom(state->connection, "BREAD_CLIPBOARD");
 
   bread_log_debug("Setting WM_PROTOCOLS");
   xcb_change_property(state->connection, XCB_PROP_MODE_REPLACE,
@@ -223,13 +246,17 @@ static void x11_init(bread_window_t *window) {
   if (!bread_x11_xkb_init(state)) {
     bread_log_fatal("Failed to initialize xkb");
     x11_state_cleanup(state);
-    window->backend = NULL;
+    window->backend = null;
     return;
   }
 
   bread_log_debug("Setting running to true");
   state->running = true;
 }
+
+//
+//
+//
 
 /**
  * @brief Polls for events on the X11 window.
@@ -239,9 +266,9 @@ static void x11_init(bread_window_t *window) {
  *
  * @param window The window to poll for events.
  *
- * @pre @c window must be valid and created by @ref bread_window_new().
+ * @pre @c window must be valid and created by @ref bread_window_init().
  *
- * @see @ref bread_window_new().
+ * @see @ref bread_window_init()().
  */
 static void x11_poll_events(bread_window_t *window) {
   if (!window || !window->backend) {
@@ -278,7 +305,7 @@ static void x11_poll_events(bread_window_t *window) {
 
         bread_event_t ev = {0};
         ev.type = BREAD_EVENT_WINDOW_CLOSE;
-        fire_event(state->window, &ev);
+        bread_fire_event(state->window, &ev);
       }
     } break;
 
@@ -295,7 +322,7 @@ static void x11_poll_events(bread_window_t *window) {
         ev.type = BREAD_EVENT_WINDOW_RESIZE;
         ev.data.resize.width = state->width;
         ev.data.resize.height = state->height;
-        fire_event(state->window, &ev);
+        bread_fire_event(state->window, &ev);
       }
     } break;
 
@@ -308,7 +335,7 @@ static void x11_poll_events(bread_window_t *window) {
       ev.type = BREAD_EVENT_KEY_PRESS;
       ev.data.key.key = bread_evdev_to_key(key->detail - 8);
       ev.data.key.raw_keycode = key->detail;
-      fire_event(state->window, &ev);
+      bread_fire_event(state->window, &ev);
     } break;
 
     case XCB_KEY_RELEASE: {
@@ -320,7 +347,7 @@ static void x11_poll_events(bread_window_t *window) {
       ev.type = BREAD_EVENT_KEY_RELEASE;
       ev.data.key.key = bread_evdev_to_key(key->detail - 8);
       ev.data.key.raw_keycode = key->detail;
-      fire_event(state->window, &ev);
+      bread_fire_event(state->window, &ev);
     } break;
 
     case XCB_BUTTON_PRESS: {
@@ -334,7 +361,7 @@ static void x11_poll_events(bread_window_t *window) {
         ev.type = BREAD_EVENT_MOUSE_SCROLL;
         ev.data.mouse_scroll.dx = 0.0;
         ev.data.mouse_scroll.dy = (button->detail == 4) ? 1.0 : -1.0;
-        fire_event(state->window, &ev);
+        bread_fire_event(state->window, &ev);
         break;
       }
 
@@ -343,7 +370,7 @@ static void x11_poll_events(bread_window_t *window) {
       bread_event_t ev = {0};
       ev.type = BREAD_EVENT_MOUSE_PRESS;
       ev.data.mouse_button.button = mouse_button;
-      fire_event(state->window, &ev);
+      bread_fire_event(state->window, &ev);
     } break;
 
     case XCB_BUTTON_RELEASE: {
@@ -357,7 +384,7 @@ static void x11_poll_events(bread_window_t *window) {
       bread_event_t ev = {0};
       ev.type = BREAD_EVENT_MOUSE_RELEASE;
       ev.data.mouse_button.button = mouse_button;
-      fire_event(state->window, &ev);
+      bread_fire_event(state->window, &ev);
     } break;
 
     case XCB_MOTION_NOTIFY: {
@@ -369,13 +396,22 @@ static void x11_poll_events(bread_window_t *window) {
       ev.type = BREAD_EVENT_MOUSE_MOVE;
       ev.data.mouse_move.x = motion->event_x;
       ev.data.mouse_move.y = motion->event_y;
-      fire_event(state->window, &ev);
+      bread_fire_event(state->window, &ev);
     } break;
 
     case XCB_DESTROY_NOTIFY: {
       bread_log_debug("Got destroy notify");
       state->running = false;
     } break;
+
+    case XCB_SELECTION_REQUEST:
+      bread_x11_clipboard_request(state,
+                                  (xcb_selection_request_event_t *)event);
+      break;
+
+    case XCB_SELECTION_CLEAR:
+      bread_x11_clipboard_clear(state, (xcb_selection_clear_event_t *)event);
+      break;
 
     default:
       bread_log_debug("Got unknown event");
@@ -386,6 +422,10 @@ static void x11_poll_events(bread_window_t *window) {
   }
 }
 
+//
+//
+//
+
 /**
  * @brief Checks if the X11 window should close.
  *
@@ -394,7 +434,7 @@ static void x11_poll_events(bread_window_t *window) {
  *
  * @param window The window to check.
  *
- * @pre @c window must be valid and created by @ref bread_window_new().
+ * @pre @c window must be valid and created by @ref bread_window_init().
  *
  * @return true if the window should close, false if not.
  */
@@ -405,17 +445,21 @@ static b32 x11_should_close(bread_window_t *window) {
   return !state->running;
 }
 
+//
+//
+//
+
 /**
  * @brief Destroys the X11 window.
  *
  * @details Cleans up the X11 state with @ref x11_state_cleanup(), and sets the
- * window backend to NULL.
+ * window backend to null.
  *
  * @param window The window to destroy.
  *
- * @pre @c window must be valid and created by @ref bread_window_new().
+ * @pre @c window must be valid and created by @ref bread_window_init().
  *
- * @see @ref bread_window_new().
+ * @see @ref bread_window_init()().
  */
 static void x11_destroy(bread_window_t *window) {
   bread_log_debug("Destroying X11 window");
@@ -427,8 +471,12 @@ static void x11_destroy(bread_window_t *window) {
 
   x11_state_cleanup(state);
 
-  window->backend = NULL;
+  window->backend = null;
 }
+
+//
+//
+//
 
 /**
  * @brief Gets the X11 surface.
@@ -437,7 +485,7 @@ static void x11_destroy(bread_window_t *window) {
  *
  * @param window The window to get the surface from.
  *
- * @pre @c window must be valid and created by @ref bread_window_new().
+ * @pre @c window must be valid and created by @ref bread_window_init().
  *
  * @return The surface of the X11 window as a bread surface.
  */
@@ -460,6 +508,10 @@ static bread_surface_t x11_get_surface(bread_window_t *window) {
   };
 }
 
+//
+//
+//
+
 /**
  * @brief Sets the title of the X11 window.
  *
@@ -469,7 +521,7 @@ static bread_surface_t x11_get_surface(bread_window_t *window) {
  * @param title The title to set.
  *
  * @pre
- * - @c window must be valid and create by @ref bread_window_new
+ * - @c window must be valid and create by @ref bread_window_init().
  * - @c title must be a valid null-terminated C-String.
  */
 static void x11_set_title(bread_window_t *window, const char *title) {
@@ -497,6 +549,49 @@ static void x11_set_title(bread_window_t *window, const char *title) {
   xcb_flush(state->connection);
 }
 
+//
+//
+//
+
+/**
+ * @brief Sets the x11 clipboard.
+ *
+ * @details Forwards to @ref bread_x11_clipboard_set() when the window
+ * has a backend.
+ *
+ * @param window The window to set the clipboard for.
+ * @param text The text to copy, or null to clear.
+ *
+ * @pre @c window must be valid and created by @ref bread_window_init().
+ */
+static void x11_clipboard_set(bread_window_t *window, const cstr *text) {
+  if (window && window->backend)
+    bread_x11_clipboard_set(window->backend, text);
+}
+
+//
+//
+//
+
+/**
+ * @brief Gets the x11 clipboard.
+ *
+ * @details Forwards to @ref bread_x11_clipboard_get() when the window
+ * has a backend.
+ *
+ * @param window The window to read the clipboard for.
+ *
+ * @pre @c window must be valid and created by @ref bread_window_init().
+ *
+ * @return The clipboard text, or null when empty or unavailable.
+ */
+static const cstr *x11_clipboard_get(bread_window_t *window) {
+  if (!window || !window->backend)
+    return null;
+
+  return bread_x11_clipboard_get(window->backend);
+}
+
 /**
  * @brief Set the minimum size of the window.
  *
@@ -509,7 +604,7 @@ static void x11_set_title(bread_window_t *window, const char *title) {
  * @param width The minimum width of the window.
  * @param height The minimum height of the window.
  *
- * @pre @c window must be valid and created by @ref bread_window_new().
+ * @pre @c window must be valid and created by @ref bread_window_init().
  */
 static void x11_set_min_size(bread_window_t *window, u16 width, u16 height) {
   if (!window || !window->backend) {
@@ -532,7 +627,7 @@ static void x11_set_min_size(bread_window_t *window, u16 width, u16 height) {
 
   xcb_size_hints_t hints = {0};
   uint8_t got = xcb_icccm_get_wm_normal_hints_reply(state->connection, cookie,
-                                                    &hints, NULL);
+                                                    &hints, null);
 
   if (got) {
     hints.flags &= ~XCB_ICCCM_SIZE_HINT_P_MIN_SIZE;
@@ -555,10 +650,12 @@ static void x11_set_min_size(bread_window_t *window, u16 width, u16 height) {
   xcb_flush(state->connection);
 }
 
+//
+//
+//
+
 /**
  * @brief Get the X11 backend.
- *
- * @details Supplies the methods for the X11 backend.
  *
  * @param init The init function.
  * @param poll_events The poll events function.
@@ -567,9 +664,10 @@ static void x11_set_min_size(bread_window_t *window, u16 width, u16 height) {
  * @param get_surface The get surface function.
  * @param set_title The set title function.
  * @param set_min_size The set min size function.
+ * @param clipboard_set The clipboard set function.
+ * @param clipboard_get The clipboard get function.
  * @param backend_type The backend type which is BREAD_BACKEND_X11.
  */
-
 const bread_backend_vtable_t bread_x11_backend = {
     .init = x11_init,
     .poll_events = x11_poll_events,
@@ -578,6 +676,8 @@ const bread_backend_vtable_t bread_x11_backend = {
     .get_surface = x11_get_surface,
     .set_title = x11_set_title,
     .set_min_size = x11_set_min_size,
+    .clipboard_set = x11_clipboard_set,
+    .clipboard_get = x11_clipboard_get,
     .backend_type = BREAD_BACKEND_X11,
 };
 #endif // !BREAD_X11

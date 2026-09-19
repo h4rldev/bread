@@ -1,7 +1,11 @@
 #ifndef BREAD_WINDOW_H
 #define BREAD_WINDOW_H
 
+/*************************************************/
+
 #include <bread/types.h>
+
+/*************************************************/
 
 /**
  * @brief Initializes a window.
@@ -20,6 +24,10 @@
  */
 void bread_window_init(bread_window_t *window);
 
+//
+//
+//
+
 /**
  * @brief Poll for window events.
  *
@@ -36,6 +44,10 @@ void bread_window_init(bread_window_t *window);
  * x11_poll_events().
  */
 void bread_window_poll(bread_window_t *window);
+
+//
+//
+//
 
 /**
  * @brief Sets the window title
@@ -55,6 +67,10 @@ void bread_window_poll(bread_window_t *window);
  */
 void bread_window_set_title(bread_window_t *window, const cstr *title);
 
+//
+//
+//
+
 /**
  * @brief Sets the minimum size of the window.
  *
@@ -71,6 +87,10 @@ void bread_window_set_title(bread_window_t *window, const cstr *title);
  * - @c height and @c width can be 0, but then what's the point?
  */
 void bread_window_set_min_size(bread_window_t *window, u16 width, u16 height);
+
+//
+//
+//
 
 /**
  * @brief Checks if the window should close.
@@ -89,6 +109,10 @@ void bread_window_set_min_size(bread_window_t *window, u16 width, u16 height);
  */
 b32 bread_window_should_close(bread_window_t *window);
 
+//
+//
+//
+
 /**
  * @brief Destroys a window.
  *
@@ -104,6 +128,10 @@ b32 bread_window_should_close(bread_window_t *window);
  * @see @ref wayland_destroy() and @ref x11_destroy().
  */
 void bread_window_destroy(bread_window_t *window);
+
+//
+//
+//
 
 /**
  * @brief Clamps the sizes passed to the minimum size.
@@ -139,6 +167,10 @@ void bread_window_clamp_size(bread_window_t *window, u32 *width, u32 *height);
  */
 bread_surface_t bread_window_get_surface(bread_window_t *window);
 
+//
+//
+//
+
 /**
  * @brief Gets the backend type of the bread build.
  *
@@ -149,4 +181,43 @@ bread_surface_t bread_window_get_surface(bread_window_t *window);
  */
 bread_backend_type_t bread_get_backend_type(void);
 
-#endif
+//
+//
+//
+
+/**
+ * @brief Sets the window's clipboard text.
+ *
+ * @details Copies @c text into the backend's clipboard, taking ownership of the
+ * selection. Passing null or an empty string clears it.
+ *
+ * @param window The window to set the clipboard for.
+ * @param text The text to copy, or null to clear.
+ *
+ * @pre @c window must be a valid pointer and properly initialized through
+ * @ref bread_window_init().
+ */
+void bread_clipboard_set(bread_window_t *window, const cstr *text);
+
+//
+//
+//
+
+/**
+ * @brief Reads the window's clipboard text.
+ *
+ * @details Returns the text currently on the clipboard, owned by the window and
+ * valid until the next call or @ref bread_window_destroy(). While the window
+ * owns the selection its own copy is returned; otherwise it is fetched from the
+ * selection owner.
+ *
+ * @param window The window to read the clipboard for.
+ *
+ * @pre @c window must be a valid pointer and properly initialized through
+ * @ref bread_window_init().
+ *
+ * @return The clipboard text, or null when it is empty or unavailable.
+ */
+const cstr *bread_clipboard_get(bread_window_t *window);
+
+#endif // !BREAD_WINDOW_H

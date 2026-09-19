@@ -1,3 +1,5 @@
+/*************************************************/
+
 #include <bread/wayland/wayland.h>
 
 #if BREAD_WAYLAND
@@ -9,12 +11,12 @@
 #include <htils/basictypes.h>
 #include <htils/string.h>
 
-#include <bread/backend.h>
 #include <bread/event.h>
 #include <bread/input.h>
 #include <bread/log.h>
 #include <bread/window.h>
 
+#include <bread/wayland/wayland_clipboard.h>
 #include <bread/wayland/wayland_input.h>
 
 #include <wayland-client-protocol.h>
@@ -22,6 +24,8 @@
 
 #include <wayland/xdg-decoration-client-protocol.h>
 #include <wayland/xdg-shell-client-protocol.h>
+
+/*************************************************/
 
 /**
  * @brief Ping the wm_base.
@@ -39,6 +43,10 @@ static void xdg_wm_base_ping(void *data, xdg_wm_base_t *wm, u32 serial) {
   xdg_wm_base_pong(wm, serial);
 }
 
+//
+//
+//
+
 /**
  * @brief The wm_base listener.
  *
@@ -47,6 +55,10 @@ static void xdg_wm_base_ping(void *data, xdg_wm_base_t *wm, u32 serial) {
 static const xdg_wm_base_listener_t xdg_wm_base_listener = {
     .ping = xdg_wm_base_ping,
 };
+
+//
+//
+//
 
 /**
  * @brief Close the toplevel.
@@ -64,8 +76,12 @@ static void xdg_toplevel_close(void *data, xdg_toplevel_t *toplevel) {
   state->running = false;
 
   bread_event_t event = {.type = BREAD_EVENT_WINDOW_CLOSE};
-  fire_event(state->window, &event);
+  bread_fire_event(state->window, &event);
 }
+
+//
+//
+//
 
 /**
  * @brief Configure the toplevel.
@@ -92,9 +108,13 @@ static void xdg_toplevel_configure(void *data, xdg_toplevel_t *toplevel,
     event.type = BREAD_EVENT_WINDOW_RESIZE;
     event.data.resize.width = state->width;
     event.data.resize.height = state->height;
-    fire_event(state->window, &event);
+    bread_fire_event(state->window, &event);
   }
 }
+
+//
+//
+//
 
 /**
  * @brief The toplevel listener.
@@ -106,6 +126,10 @@ static const xdg_toplevel_listener_t xdg_toplevel_listener = {
     .close = xdg_toplevel_close,
     .configure = xdg_toplevel_configure,
 };
+
+//
+//
+//
 
 /**
  * @brief Configure the surface.
@@ -131,6 +155,10 @@ static void xdg_surface_configure(void *data, xdg_surface_t *surface,
   wl_surface_commit(state->wl_surface);
 }
 
+//
+//
+//
+
 /**
  * @brief The surface listener.
  *
@@ -139,6 +167,10 @@ static void xdg_surface_configure(void *data, xdg_surface_t *surface,
 static const xdg_surface_listener_t xdg_surface_listener = {
     .configure = xdg_surface_configure,
 };
+
+//
+//
+//
 
 /**
  * @brief Handes registry binds.
@@ -192,7 +224,18 @@ static void global_registry_handler(void *data, wl_registry_t *registry, u32 id,
         wl_registry_bind(registry, id, &xdg_wm_base_interface, wm_version);
     xdg_wm_base_add_listener(state->xdg_wm_base, &xdg_wm_base_listener, state);
   }
+
+  else if (strcmp(interface, wl_data_device_manager_interface.name) == 0) {
+    bread_log_debug("Binding data_device_manager");
+    u32 v = (version < 3) ? version : 3;
+    state->data_device_manager =
+        wl_registry_bind(registry, id, &wl_data_device_manager_interface, v);
+  }
 }
+
+//
+//
+//
 
 /**
  * @brief Removes the registry.
@@ -202,6 +245,10 @@ static void global_registry_handler(void *data, wl_registry_t *registry, u32 id,
  */
 static void global_registry_remover(void *data, wl_registry_t *registry,
                                     u32 id) {}
+
+//
+//
+//
 
 /**
  * @brief Cleans up the wayland state.
@@ -215,6 +262,8 @@ static void global_registry_remover(void *data, wl_registry_t *registry,
  * @pre @c state must be valid.
  */
 static void wl_state_cleanup(wl_state_t *state) {
+  bread_wayland_clipboard_cleanup(state);
+
   if (state->seat) {
     bread_log_debug("Cleaning up seat");
     bread_wayland_seat_cleanup(state);
@@ -282,6 +331,10 @@ static void wl_state_cleanup(wl_state_t *state) {
   }
 }
 
+//
+//
+//
+
 /**
  * @brief The registry listener.
  *
@@ -292,6 +345,10 @@ static const wl_registry_listener_t registry_listener = {
     .global_remove = global_registry_remover,
 };
 
+//
+//
+//
+
 /**
  * @brief Initializes the wayland window.
  *
@@ -301,7 +358,7 @@ static const wl_registry_listener_t registry_listener = {
  *
  * @param window The window to initialize.
  *
- * @pre @c window must be valid and created by @ref bread_window_new().
+ * @pre @c window must be valid and created by @ref bread_window_init().
  */
 static void wayland_init(bread_window_t *window) {
   bread_log_debug("Initializing wayland window");
@@ -310,7 +367,7 @@ static void wayland_init(bread_window_t *window) {
   wl_state_t *state = arena_alloc(arena, wl_state_t, 1);
   state->window = window;
 
-  state->display = wl_display_connect(NULL);
+  state->display = wl_display_connect(null);
   if (!state->display) {
     bread_log_fatal("Failed to connect to display socket");
     window->backend = null;
@@ -335,6 +392,8 @@ static void wayland_init(bread_window_t *window) {
     bread_log_fatal("Failed to roundtrip display");
     goto fail;
   }
+
+  bread_wayland_clipboard_init(state);
 
   if (!state->compositor) {
     bread_log_fatal("No wl_compositor found");
@@ -420,6 +479,10 @@ fail:
   window->backend = null;
 }
 
+//
+//
+//
+
 /**
  * @brief Polls for events on the wayland window.
  *
@@ -428,7 +491,7 @@ fail:
  *
  * @param window The window to poll for events.
  *
- * @pre @c window must be valid and created by @ref bread_window_new().
+ * @pre @c window must be valid and created by @ref bread_window_init().
  */
 static void wayland_poll_events(bread_window_t *window) {
   wl_state_t *state = window->backend;
@@ -473,6 +536,10 @@ static void wayland_poll_events(bread_window_t *window) {
   }
 }
 
+//
+//
+//
+
 /**
  * @brief Checks if the wayland window should close.
  *
@@ -481,7 +548,7 @@ static void wayland_poll_events(bread_window_t *window) {
  *
  * @param window The window to check.
  *
- * @pre @c window must be valid and created by @ref bread_window_new().
+ * @pre @c window must be valid and created by @ref bread_window_init().
  *
  * @return true if the window should close, false if not.
  */
@@ -494,6 +561,10 @@ static b32 wayland_should_close(bread_window_t *window) {
   return !state->running;
 }
 
+//
+//
+//
+
 /**
  * @brief Destroys the wayland window.
  *
@@ -502,9 +573,9 @@ static b32 wayland_should_close(bread_window_t *window) {
  *
  * @param window The window to destroy.
  *
- * @pre @c window must be valid and created by @ref bread_window_new().
+ * @pre @c window must be valid and created by @ref bread_window_init().
  *
- * @see @ref bread_window_new(), @ref wl_state_cleanup().
+ * @see @ref bread_window_init(), @ref wl_state_cleanup().
  */
 static void wayland_destroy(bread_window_t *window) {
   bread_log_debug("Destroying wayland window");
@@ -517,6 +588,10 @@ static void wayland_destroy(bread_window_t *window) {
   window->backend = null;
 }
 
+//
+//
+//
+
 /**
  * @brief Gets the wayland surface.
  *
@@ -524,7 +599,7 @@ static void wayland_destroy(bread_window_t *window) {
  *
  * @param window The window to get the surface from.
  *
- * @pre @c window must be valid and created by @ref bread_window_new().
+ * @pre @c window must be valid and created by @ref bread_window_init().
  *
  * @return The surface of the wayland window as a bread surface.
  */
@@ -540,6 +615,10 @@ static bread_surface_t wayland_get_surface(bread_window_t *window) {
   };
 }
 
+//
+//
+//
+
 /**
  * @brief Sets the title of the wayland window.
  *
@@ -548,7 +627,7 @@ static bread_surface_t wayland_get_surface(bread_window_t *window) {
  *
  * @param window The window to set the title of.
  *
- * @pre @c window must be valid and created by @ref bread_window_new().
+ * @pre @c window must be valid and created by @ref bread_window_init().
  */
 static void wayland_set_title(bread_window_t *window, const char *title) {
   if (!window || !window->backend || !title) {
@@ -572,6 +651,10 @@ static void wayland_set_title(bread_window_t *window, const char *title) {
   wl_surface_commit(state->wl_surface);
 }
 
+//
+//
+//
+
 /**
  * @brief Sets the minimum size of the wayland window.
  *
@@ -584,7 +667,7 @@ static void wayland_set_title(bread_window_t *window, const char *title) {
  * @param width The minimum width of the window.
  * @param height The minimum height of the window.
  *
- * @pre @c window must be valid and created by @ref bread_window_new().
+ * @pre @c window must be valid and created by @ref bread_window_init().
  */
 static void wayland_set_min_size(bread_window_t *window, u16 width,
                                  u16 height) {
@@ -603,6 +686,53 @@ static void wayland_set_min_size(bread_window_t *window, u16 width,
   wl_surface_commit(state->wl_surface);
 }
 
+//
+//
+//
+
+/**
+ * @brief Sets the wayland clipboard.
+ *
+ * @details Forwards to @ref bread_wayland_clipboard_set() when the window
+ * has a backend.
+ *
+ * @param window The window to set the clipboard for.
+ * @param text The text to copy, or null to clear.
+ *
+ * @pre @c window must be valid and created by @ref bread_window_init().
+ */
+static void wayland_clipboard_set(bread_window_t *window, const cstr *text) {
+  if (!window || !window->backend)
+    return;
+  bread_wayland_clipboard_set(window->backend, text);
+}
+
+//
+//
+//
+
+/**
+ * @brief Gets the wayland clipboard.
+ *
+ * @details Forwards to @ref bread_wayland_clipboard_get() when the window
+ * has a backend.
+ *
+ * @param window The window to read the clipboard for.
+ *
+ * @pre @c window must be valid and created by @ref bread_window_init().
+ *
+ * @return The clipboard text, or null when empty or unavailable.
+ */
+static const cstr *wayland_clipboard_get(bread_window_t *window) {
+  if (!window || !window->backend)
+    return null;
+  return bread_wayland_clipboard_get(window->backend);
+}
+
+//
+//
+//
+
 /**
  * @brief Get the wayland backend.
  *
@@ -613,6 +743,8 @@ static void wayland_set_min_size(bread_window_t *window, u16 width,
  * @param get_surface The get surface function.
  * @param set_title The set title function.
  * @param set_min_size The set min size function.
+ * @param clipboard_set The clipboard set function.
+ * @param clipboard_get The clipboard get function.
  * @param backend_type The backend type which is BREAD_BACKEND_WAYLAND.
  */
 const bread_backend_vtable_t bread_wayland_backend = {
@@ -623,6 +755,8 @@ const bread_backend_vtable_t bread_wayland_backend = {
     .get_surface = wayland_get_surface,
     .set_title = wayland_set_title,
     .set_min_size = wayland_set_min_size,
+    .clipboard_set = wayland_clipboard_set,
+    .clipboard_get = wayland_clipboard_get,
     .backend_type = BREAD_BACKEND_WAYLAND,
 };
 #endif // BREAD_WAYLAND

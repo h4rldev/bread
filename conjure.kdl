@@ -24,6 +24,10 @@ project {
         main {
           src "src/test/main.c"
         }
+
+        clipboard {
+          src "src/test/clipboard.c"
+        }
       } 
     }
 
@@ -52,6 +56,10 @@ project {
       tests {
         main {
           src "src/test/main.c"
+        }
+
+        clipboard {
+          src "src/test/clipboard.c"
         }
       }
     }

@@ -1,3 +1,5 @@
+/*************************************************/
+
 #include <stdarg.h>
 #include <stdio.h>
 #include <threads.h>
@@ -7,6 +9,8 @@
 #include <htils/string.h>
 
 #include <bread/log.h>
+
+/*************************************************/
 
 #define COLOR_RESET "\x1b[0m"
 #define COLOR_DARK_RED "\x1b[31m"
@@ -23,11 +27,29 @@ typedef struct {
   u64 count;
 } bread_log_entry_t;
 
+//
+//
+//
+
 static thread_local bread_log_entry_t history[BREAD_LOG_HISTORY_SIZE] = {0};
 static thread_local u32 history_count = 0;
 static thread_local u64 last_hash = 0;
 static thread_local b32 line_active = false;
 
+//
+//
+//
+
+/**
+ * @brief Hashes a log level and message.
+ *
+ * @details Uses FNV-1a over the level string then the formatted message.
+ *
+ * @param level The log level string.
+ * @param msg The formatted message string.
+ *
+ * @return The combined hash.
+ */
 static u64 bread_log_hash(const cstr *level, const cstr *msg) {
   u64 h = 0xcbf29ce484222325ULL;
   for (const cstr *p = level; *p; p++)
@@ -37,6 +59,20 @@ static u64 bread_log_hash(const cstr *level, const cstr *msg) {
   return h;
 }
 
+//
+//
+//
+
+/**
+ * @brief Finds or creates the history entry for a hash.
+ *
+ * @details Scans the thread-local history, appending a new entry (wrapping at
+ * @ref BREAD_LOG_HISTORY_SIZE) when @c hash is not found.
+ *
+ * @param hash The hash to look up.
+ *
+ * @return A pointer to the history entry for @c hash.
+ */
 static bread_log_entry_t *bread_log_find(u64 hash) {
   for (u32 i = 0; i < history_count; i++) {
     if (history[i].hash == hash)
@@ -51,6 +87,10 @@ static bread_log_entry_t *bread_log_find(u64 hash) {
     history_count++;
   return &history[idx];
 }
+
+//
+//
+//
 
 void bread_log(bread_log_level_t level, cstr *fmt, ...) {
 #ifndef BREAD_DEBUG
