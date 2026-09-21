@@ -383,6 +383,7 @@ typedef struct bread_window {
  *
  * @param init The init function of the backend.
  * @param poll_events The poll_events function of the backend.
+ * @param wait_events The wait_events function of the backend.
  * @param should_close The should_close function of the backend.
  * @param destroy The destroy function of the backend.
  * @param get_surface The get_surface function of the backend.
@@ -395,6 +396,7 @@ typedef struct bread_window {
 typedef struct {
   void (*init)(bread_window_t *window);
   void (*poll_events)(bread_window_t *window);
+  void (*wait_events)(bread_window_t *window, i32 timeout_ms);
   b32 (*should_close)(bread_window_t *window);
   void (*destroy)(bread_window_t *window);
   bread_surface_t (*get_surface)(bread_window_t *window);

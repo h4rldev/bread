@@ -4,6 +4,7 @@
 
 #if BREAD_X11
 
+#include <poll.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -427,6 +428,42 @@ static void x11_poll_events(bread_window_t *window) {
 //
 
 /**
+ * @brief Waits for events on the X11 window.
+ *
+ * @details Blocks on the connection's file descriptor for up to @p timeout_ms,
+ * then drains all pending XCB events via @ref x11_poll_events(). A
+ * @p timeout_ms of @c 0 skips the block and polls immediately.
+ *
+ * @param window The window to wait for events.
+ * @param timeout_ms The maximum time to block, in milliseconds.
+ *
+ * @pre @c window must be valid and created by @ref bread_window_init().
+ *
+ * @see @ref x11_poll_events().
+ */
+static void x11_wait_events(bread_window_t *window, i32 timeout_ms) {
+  x11_state_t *state = window->backend;
+  if (!state) {
+    bread_log_error("Missing values, can't wait for events");
+    return;
+  }
+
+  struct pollfd fds = {
+      .fd = xcb_get_file_descriptor(state->connection),
+      .events = POLLIN,
+  };
+
+  if (timeout_ms > 0)
+    poll(&fds, 1, timeout_ms);
+
+  x11_poll_events(window);
+}
+
+//
+//
+//
+
+/**
  * @brief Checks if the X11 window should close.
  *
  * @details Useful for an application's event loop, and it's designed with that
@@ -671,6 +708,7 @@ static void x11_set_min_size(bread_window_t *window, u16 width, u16 height) {
 const bread_backend_vtable_t bread_x11_backend = {
     .init = x11_init,
     .poll_events = x11_poll_events,
+    .wait_events = x11_wait_events,
     .should_close = x11_should_close,
     .destroy = x11_destroy,
     .get_surface = x11_get_surface,

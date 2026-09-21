@@ -511,16 +511,19 @@ static void wayland_repeat_tick(wl_state_t *state) {
 //
 
 /**
- * @brief Polls for events on the wayland window.
+ * @brief Polls or waits for events on the wayland window.
  *
- * @details Uses poll to poll the display file descriptor for events, and if
- * there's any it reads them, and dispatches them.
+ * @details Flushes the display, ticks keyboard repeat, then polls the display
+ * file descriptor for up to @p timeout_ms. On events, reads and dispatches
+ * them; on timeout (@c 0 returned), dispatches any pending events and flushes.
  *
  * @param window The window to poll for events.
+ * @param timeout_ms The maximum time to block, in milliseconds; @c 0 polls
+ * without blocking.
  *
  * @pre @c window must be valid and created by @ref bread_window_init().
  */
-static void wayland_poll_events(bread_window_t *window) {
+static void wayland_poll_impl(bread_window_t *window, i32 timeout_ms) {
   wl_state_t *state = window->backend;
   if (!state) {
     bread_log_fatal("No state, can't poll events");
@@ -535,33 +538,74 @@ static void wayland_poll_events(bread_window_t *window) {
       .events = POLLIN,
   };
 
-  int ret = poll(&fds, 1, 0);
+  int ret = poll(&fds, 1, timeout_ms);
   if (ret < 0) {
     bread_log_error("poll failed: %s", strerror(errno));
     return;
   }
 
-  if (ret > 0) {
-    if (fds.revents & (POLLERR | POLLHUP)) {
-      bread_log_error("Wayland socket error, closing");
-      state->running = false;
-      return;
-    }
-
-    if (fds.revents & POLLIN) {
-      bread_log_debug("Found event, processing");
-      while (wl_display_prepare_read(state->display) != 0)
-        wl_display_dispatch_pending(state->display);
-
-      wl_display_flush(state->display);
-      wl_display_read_events(state->display);
-      wl_display_dispatch_pending(state->display);
-    } else {
-      bread_log_debug("No event, flushing");
-      wl_display_dispatch_pending(state->display);
-      wl_display_flush(state->display);
-    }
+  if (ret == 0) {
+    wl_display_dispatch_pending(state->display);
+    wl_display_flush(state->display);
+    return;
   }
+
+  if (fds.revents & (POLLERR | POLLHUP)) {
+    bread_log_error("Wayland socket error, closing");
+    state->running = false;
+    return;
+  }
+
+  if (fds.revents & POLLIN) {
+    bread_log_debug("Found event, processing");
+    while (wl_display_prepare_read(state->display) != 0)
+      wl_display_dispatch_pending(state->display);
+
+    wl_display_flush(state->display);
+    wl_display_read_events(state->display);
+    wl_display_dispatch_pending(state->display);
+  } else {
+    bread_log_debug("No event, flushing");
+    wl_display_dispatch_pending(state->display);
+    wl_display_flush(state->display);
+  }
+}
+
+//
+//
+//
+
+/**
+ * @brief Polls for events on the wayland window.
+ *
+ * @details Polls without blocking; equivalent to @ref wayland_poll_impl() with
+ * a @p timeout_ms of @c 0.
+ *
+ * @param window The window to poll for events.
+ *
+ * @pre @c window must be valid and created by @ref bread_window_init().
+ */
+static void wayland_poll_events(bread_window_t *window) {
+  wayland_poll_impl(window, 0);
+}
+
+//
+//
+//
+
+/**
+ * @brief Waits for events on the wayland window.
+ *
+ * @details Blocks for up to @p timeout_ms, then reads and dispatches events;
+ * equivalent to @ref wayland_poll_impl() with the given timeout.
+ *
+ * @param window The window to wait for events.
+ * @param timeout_ms The maximum time to block, in milliseconds.
+ *
+ * @pre @c window must be valid and created by @ref bread_window_init().
+ */
+static void wayland_wait_events(bread_window_t *window, i32 timeout_ms) {
+  wayland_poll_impl(window, timeout_ms);
 }
 
 //
@@ -571,8 +615,8 @@ static void wayland_poll_events(bread_window_t *window) {
 /**
  * @brief Checks if the wayland window should close.
  *
- * @details Useful for an application's event loop, and it's designed with that
- * in mind.
+ * @details Useful for an application's event loop, and it's designed with
+ * that in mind.
  *
  * @param window The window to check.
  *
@@ -688,8 +732,8 @@ static void wayland_set_title(bread_window_t *window, const char *title) {
  *
  * @details Updates the internal minimum size and sets the xdg_toplevel's
  * minimum width, and height, then commits the surface. If width and height
- * passed are equal to the already set minimum size or 0 then this function does
- * nothing.
+ * passed are equal to the already set minimum size or 0 then this function
+ * does nothing.
  *
  * @param window The window to set the minimum size of.
  * @param width The minimum width of the window.
@@ -778,6 +822,7 @@ static const cstr *wayland_clipboard_get(bread_window_t *window) {
 const bread_backend_vtable_t bread_wayland_backend = {
     .init = wayland_init,
     .poll_events = wayland_poll_events,
+    .wait_events = wayland_wait_events,
     .should_close = wayland_should_close,
     .destroy = wayland_destroy,
     .get_surface = wayland_get_surface,

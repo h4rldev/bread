@@ -121,6 +121,21 @@ void bread_window_poll(bread_window_t *window) {
   backend_vtable->poll_events(window);
 }
 
+void bread_window_wait_events(bread_window_t *window, i32 timeout_ms) {
+  if (!window || !window->backend) {
+    bread_log_error("Missing values, can't wait for events");
+    return;
+  }
+
+  const bread_backend_vtable_t *backend_vtable = get_backend_vtable();
+  if (!backend_vtable) {
+    bread_log_error("Missing backend vtable, can't wait for events");
+    return;
+  }
+
+  backend_vtable->wait_events(window, timeout_ms);
+}
+
 b32 bread_window_should_close(bread_window_t *window) {
   if (!window || !window->backend) {
     bread_log_error("Missing values, can't check if should close");

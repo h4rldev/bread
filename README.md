@@ -22,9 +22,12 @@ Chosen by which library is built (`BREAD_WAYLAND` / `BREAD_X11`):
   `bread_window_destroy`), set a title and minimum size
   (`bread_window_set_title`, `bread_window_set_min_size`), and hand the native
   surface to a renderer (`bread_window_get_surface`).
-- **Event loop**: `bread_window_poll` + `bread_window_should_close` drive the
-  loop; a callback (`bread_window_set_event_callback`) receives `bread_event_t`
-  close, resize, key, mouse and scroll events.
+- **Event loop**: `bread_window_poll` (non-blocking) or
+  `bread_window_wait_events` (blocks up to a timeout) plus
+  `bread_window_should_close` drive the loop; a callback
+  (`bread_window_set_event_callback`) receives `bread_event_t` close, resize,
+  key, mouse and scroll events. Prefer `bread_window_wait_events` over a
+  consumer-side `sleep` to avoid busy-waiting.
 - **Input**: key events to unicode/string (`bread_event_key_to_unicode`,
   `bread_event_key_to_cstr`), and the current keyboard/mouse state
   (`bread_window_get_input`).

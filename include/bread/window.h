@@ -50,6 +50,27 @@ void bread_window_poll(bread_window_t *window);
 //
 
 /**
+ * @brief Waits for events on the window, blocking up to @p timeout_ms.
+ * @details Blocks (without spinning) until the backend has an event or
+ * @p timeout_ms elapses, then processes whatever events are pending. Use this
+ * instead of a consumer-side sleep to avoid busy-waiting the event loop. A
+ * @p timeout_ms of @c 0 is equivalent to @ref bread_window_poll().
+ *
+ * @param window The window to wait for events.
+ * @param timeout_ms The maximum time to block, in milliseconds.
+ *
+ * @pre @c window must be a valid pointer and properly initialized through @ref
+ * bread_window_init().
+ *
+ * @see @ref bread_window_poll().
+ */
+void bread_window_wait_events(bread_window_t *window, i32 timeout_ms);
+
+//
+//
+//
+
+/**
  * @brief Sets the window title
  *
  * @details Doesn't matter where you're calling this, and the window title will
