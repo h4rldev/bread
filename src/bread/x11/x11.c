@@ -184,9 +184,9 @@ static void x11_init(bread_window_t *window) {
   u32 value_list[] = {
       XCB_GRAVITY_NORTH_WEST,
       XCB_EVENT_MASK_EXPOSURE | XCB_EVENT_MASK_STRUCTURE_NOTIFY |
-          XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_KEY_RELEASE |
-          XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_BUTTON_RELEASE |
-          XCB_EVENT_MASK_POINTER_MOTION};
+          XCB_EVENT_MASK_ENTER_WINDOW XCB_EVENT_MASK_KEY_PRESS |
+          XCB_EVENT_MASK_KEY_RELEASE | XCB_EVENT_MASK_BUTTON_PRESS |
+          XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_POINTER_MOTION};
 
   xcb_create_window(state->connection, XCB_COPY_FROM_PARENT, state->xcb_window,
                     state->screen->root, 0, 0, state->width, state->height, 0,
