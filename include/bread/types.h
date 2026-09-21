@@ -285,6 +285,7 @@ typedef struct {
     struct {
       bread_key_t key;
       u32 raw_keycode;
+      b32 repeat;
     } key;
     struct {
       bread_mouse_button_t button;

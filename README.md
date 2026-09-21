@@ -36,7 +36,6 @@ Chosen by which library is built (`BREAD_WAYLAND` / `BREAD_X11`):
 - **Backend abstraction**: a `bread_backend_vtable_t` so both platforms share one
   window/event/input API.
 
-
 ## Building
 
 bread builds with [conjure](https://codeberg.org/h4rl/conjure):

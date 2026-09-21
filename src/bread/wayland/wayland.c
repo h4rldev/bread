@@ -365,6 +365,11 @@ static void wayland_init(bread_window_t *window) {
 
   arena_t *arena = window->arena;
   wl_state_t *state = arena_alloc(arena, wl_state_t, 1);
+  state->repeat_key = BREAD_KEY_MAX;
+  state->repeat_rate = 0;
+  state->repeat_delay = 0;
+  state->repeat_next = 0.0;
+  state->repeat_raw_keycode = 0;
   state->window = window;
 
   state->display = wl_display_connect(null);
@@ -483,6 +488,28 @@ fail:
 //
 //
 
+static void wayland_repeat_tick(wl_state_t *state) {
+  if (state->repeat_key >= BREAD_KEY_MAX || state->repeat_rate <= 0)
+    return;
+
+  f64 now = bread_wayland_now();
+  if (now < state->repeat_next)
+    return;
+
+  state->repeat_next = now + 1.0 / (f64)state->repeat_rate;
+
+  bread_event_t event = {0};
+  event.type = BREAD_EVENT_KEY_PRESS;
+  event.data.key.key = state->repeat_key;
+  event.data.key.raw_keycode = state->repeat_raw_keycode;
+  event.data.key.repeat = true;
+  bread_fire_event(state->window, &event);
+}
+
+//
+//
+//
+
 /**
  * @brief Polls for events on the wayland window.
  *
@@ -501,6 +528,7 @@ static void wayland_poll_events(bread_window_t *window) {
   }
 
   wl_display_flush(state->display);
+  wayland_repeat_tick(state);
 
   struct pollfd fds = {
       .fd = wl_display_get_fd(state->display),

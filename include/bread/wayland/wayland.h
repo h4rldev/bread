@@ -6,7 +6,8 @@
 
 /*************************************************/
 
-#include <htils/basictypes.h>
+#include <time.h>
+
 #include <wayland-client.h>
 #include <wayland-cursor.h>
 #include <xkbcommon/xkbcommon.h>
@@ -14,9 +15,18 @@
 #include <wayland/xdg-decoration-client-protocol.h>
 #include <wayland/xdg-shell-client-protocol.h>
 
+#include <htils/basictypes.h>
+
 #include <bread/input.h>
 
 /*************************************************/
+
+/** @brief Monotonic time in seconds, for autorepeat timing. */
+static inline f64 bread_wayland_now(void) {
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  return (f64)ts.tv_sec + (f64)ts.tv_nsec / 1e9;
+}
 
 typedef struct wl_display wl_display_t;
 typedef struct wl_registry wl_registry_t;
@@ -96,6 +106,11 @@ typedef struct zxdg_toplevel_decoration_v1 zxdg_toplevel_decoration_v1_t;
  * @param output_scale Current output scale factor.
  * @param running True while the window should keep running.
  * @param input Latest input snapshot (pointer/keys).
+ * @param repeat_key Key currently held for autorepeat, else BREAD_KEY_MAX.
+ * @param repeat_rate Repeats per second from wl_keyboard.repeat_info.
+ * @param repeat_delay ms before the first repeat.
+ * @param repeat_next CLOCK_MONOTONIC time (s) of the next repeat.
+ * @param repeat_raw_keycode Raw evdev code of the held key.
  * @param cursor_theme Loaded cursor theme.
  * @param cursors Cached cursors indexed by @ref bread_cursor_type_t.
  * @param current_cursor Currently applied cursor.
@@ -142,6 +157,13 @@ typedef struct {
   b32 running;
 
   bread_input_state_t input;
+
+  bread_key_t
+      repeat_key;   // key currently held for autorepeat, else BREAD_KEY_MAX
+  i32 repeat_rate;  // repeats per second from wl_keyboard.repeat_info
+  i32 repeat_delay; // ms before the first repeat
+  f64 repeat_next;  // CLOCK_MONOTONIC time (s) of the next repeat
+  i32 repeat_raw_keycode; // raw evdev code of the held key
 
   wl_cursor_theme_t *cursor_theme;
   wl_cursor_t *cursors[BREAD_CURSOR_MAX];

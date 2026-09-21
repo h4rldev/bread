@@ -167,6 +167,7 @@ static void keyboard_leave(void *data, wl_keyboard_t *keyboard, u32 serial,
   bread_log_debug("Handling keyboard leave");
   wl_state_t *state = data;
   memset(state->input.keys, 0, sizeof(state->input.keys));
+  state->repeat_key = BREAD_KEY_MAX;
 }
 
 //
@@ -207,6 +208,15 @@ static void keyboard_key(void *data, wl_keyboard_t *keyboard, u32 serial,
   bread_log_debug("Getting pressed state");
   b32 pressed = keystate == WL_KEYBOARD_KEY_STATE_PRESSED;
   state->input.keys[bread_key] = pressed;
+
+  if (pressed) {
+    state->repeat_key = bread_key;
+    state->repeat_raw_keycode = key;
+    state->repeat_next =
+        bread_wayland_now() + (f64)state->repeat_delay / 1000.0;
+  } else if (state->repeat_key == bread_key) {
+    state->repeat_key = BREAD_KEY_MAX;
+  }
 
   bread_log_debug("Emitting key press");
   bread_event_t event = {0};
@@ -257,10 +267,14 @@ static void keyboard_modifiers(void *data, wl_keyboard_t *keyboard, u32 serial,
 
 /**
  * @brief Handles the keyboard repeat info event.
- * @details Noop because we don't need to handle keyboard_repeat_info.
+ * @details Captures the repeat rate and delay.
  */
 static void keyboard_repeat_info(void *data, wl_keyboard_t *keyboard, i32 rate,
-                                 i32 delay) {}
+                                 i32 delay) {
+  wl_state_t *state = data;
+  state->repeat_rate = rate;
+  state->repeat_delay = delay;
+}
 
 //
 //
