@@ -15,8 +15,9 @@ project {
     wayland-debug {
       artifact "bread-wayland-debug"
 
-      c_flags -DBREAD_DEBUG -DBREAD_WAYLAND -ggdb -g -Og -fsanitize=address,undefined,leak -fno-sanitize-recover=all -fno-omit-frame-pointer -fno-optimize-sibling-calls -fsanitize-address-use-after-scope -fno-common -static-libasan -Wall -Wextra -Wpedantic -Wno-unused-parameter
-      ld_flags -lwayland-client -lwayland-cursor -lxkbcommon -lhtils-threadsafe
+      c_flags -DBREAD_DEBUG -DBREAD_WAYLAND -ggdb -g -Og "-fsanitize=address,undefined,leak" "-fno-sanitize-recover=all" -fno-omit-frame-pointer -fno-optimize-sibling-calls -fsanitize-address-use-after-scope -fno-common -static-libasan -Wall -Wextra -Wpedantic -Wno-unused-parameter
+      ld_flags -lwayland-client -lwayland-cursor -lxkbcommon -lhtils-threadsafe "-fsanitize=address,undefined,leak" "-fno-sanitize-recover=all" -fno-omit-frame-pointer -fno-optimize-sibling-calls -fsanitize-address-use-after-scope -fno-common -static-libasan -Wall -Wextra -Wpedantic -Wno-unused-parameter -static-libasan
+
 
       src "src/wayland/" 
 
@@ -50,8 +51,8 @@ project {
     x11-debug {
       artifact "bread-x11-debug"
 
-      c_flags -DBREAD_DEBUG -DBREAD_X11 -ggdb -g -Og -fsanitize=address,undefined,leak -fno-sanitize-recover=all -fno-omit-frame-pointer -fno-optimize-sibling-calls -fsanitize-address-use-after-scope -fno-common -static-libasan -Wall -Wextra -Wpedantic -Wno-unused-parameter
-      ld_flags -lxkbcommon -lxkbcommon-x11 -lxcb -lxcb-icccm -lxcb-cursor -lxcb-randr -lhtils-threadsafe
+      c_flags -DBREAD_DEBUG -DBREAD_X11 -ggdb -g -Og "-fsanitize=address,undefined,leak" "-fno-sanitize-recover=all" -fno-omit-frame-pointer -fno-optimize-sibling-calls -fsanitize-address-use-after-scope -fno-common -static-libasan -Wall -Wextra -Wpedantic -Wno-unused-parameter
+      ld_flags -lxkbcommon -lxkbcommon-x11 -lxcb -lxcb-icccm -lxcb-cursor -lxcb-randr -lhtils-threadsafe "-fsanitize=address,undefined,leak" "-fno-sanitize-recover=all" -fno-omit-frame-pointer -fno-optimize-sibling-calls -fsanitize-address-use-after-scope -fno-common -static-libasan -Wall -Wextra -Wpedantic -Wno-unused-parameter -static-libasan
 
       tests {
         main {

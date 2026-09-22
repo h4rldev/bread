@@ -282,6 +282,16 @@ static void wl_state_cleanup(wl_state_t *state) {
     state->decoration_manager = null;
   }
 
+  if (state->data_device) {
+    bread_log_debug("Destroying data device");
+    wl_data_device_destroy(state->data_device);
+  }
+
+  if (state->data_device_manager) {
+    bread_log_debug("Destroying data device manager");
+    wl_data_device_manager_destroy(state->data_device_manager);
+  }
+
   if (state->xdg_toplevel) {
     bread_log_debug("Destroying toplevel");
     xdg_toplevel_destroy(state->xdg_toplevel);
