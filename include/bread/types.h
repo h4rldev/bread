@@ -160,6 +160,10 @@ typedef enum bread_key {
   BREAD_KEY_MAX
 } bread_key_t;
 
+//
+//
+//
+
 /**
  * @brief A bread mouse button map.
  *
@@ -173,6 +177,20 @@ typedef enum bread_mouse_button {
   BREAD_MOUSE_BUTTON_5,
   BREAD_MOUSE_BUTTON_MAX
 } bread_mouse_button_t;
+
+//
+//
+//
+
+/**
+ * @brief A bitmask of active keyboard modifiers.
+ */
+typedef enum bread_mod {
+  BREAD_MOD_SHIFT = 1 << 0,
+  BREAD_MOD_CTRL = 1 << 1,
+  BREAD_MOD_META = 1 << 2,
+  BREAD_MOD_SUPER = 1 << 3,
+} bread_mod_t;
 
 //
 //

@@ -239,6 +239,35 @@ bread_input_state_t bread_window_get_input(bread_window_t *window) {
 #endif
 }
 
+u32 bread_window_get_mods(bread_window_t *window) {
+  if (!window || !window->backend)
+    return 0;
+
+#if BREAD_WAYLAND
+  wl_state_t *state = window->backend;
+#elif BREAD_X11
+  x11_state_t *state = window->backend;
+#endif
+
+  if (!state->xkb_state)
+    return 0;
+
+  u32 mods = 0;
+  if (xkb_state_mod_name_is_active(state->xkb_state, XKB_MOD_NAME_SHIFT,
+                                   XKB_STATE_MODS_EFFECTIVE) > 0)
+    mods |= BREAD_MOD_SHIFT;
+  if (xkb_state_mod_name_is_active(state->xkb_state, XKB_MOD_NAME_CTRL,
+                                   XKB_STATE_MODS_EFFECTIVE) > 0)
+    mods |= BREAD_MOD_CTRL;
+  if (xkb_state_mod_name_is_active(state->xkb_state, XKB_MOD_NAME_ALT,
+                                   XKB_STATE_MODS_EFFECTIVE) > 0)
+    mods |= BREAD_MOD_META;
+  if (xkb_state_mod_name_is_active(state->xkb_state, XKB_MOD_NAME_LOGO,
+                                   XKB_STATE_MODS_EFFECTIVE) > 0)
+    mods |= BREAD_MOD_SUPER;
+  return mods;
+}
+
 u32 bread_event_key_to_unicode(bread_window_t *window, bread_event_t *event) {
   if (!window || !window->backend || !event) {
     bread_log_error("Missing values, can't convert key to unicode");

@@ -32,6 +32,28 @@ bread_input_state_t bread_window_get_input(bread_window_t *window);
 //
 
 /**
+ * @brief Get the active keyboard modifiers.
+ * @details Reads the effective modifier mask from the backend's xkb state, so a
+ * keysym-only rebind (for example caps:ctrl_modifier, where the Caps Lock key
+ * acts as Control) is reported correctly. The key event's @ref bread_key_t is
+ * positional and cannot see such rebinds, so this is the reliable way to test
+ * for a held modifier.
+ *
+ * @param window The window to get the modifiers for.
+ *
+ * @pre @c window must be a valid pointer and properly initialized through @ref
+ * bread_window_init(), and you must have polled the window through @ref
+ * bread_window_poll() at least once.
+ *
+ * @return A bitmask of @ref bread_mod_t values, or 0 if unavailable.
+ */
+u32 bread_window_get_mods(bread_window_t *window);
+
+//
+//
+//
+
+/**
  * @brief Convert a bread event key to a unicode codepoint.
  *
  * @details Usually used if you wanna represent a BREAD_KEY as unicode to then
