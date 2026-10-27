@@ -197,6 +197,19 @@ bread_surface_t bread_window_get_surface(bread_window_t *window) {
   return backend_vtable->get_surface(window);
 }
 
+f32 bread_window_get_scale(bread_window_t *window) {
+  if (!window || !window->backend)
+    return 1.0f;
+
+#if BREAD_WAYLAND
+  wl_state_t *state = window->backend;
+  return state->output_scale > 0 ? (f32)state->output_scale : 1.0f;
+#elif BREAD_X11
+  x11_state_t *state = window->backend;
+  return state->scale > 0.0f ? state->scale : 1.0f;
+#endif
+}
+
 bread_backend_type_t bread_get_backend_type(void) {
   bread_log_debug("Getting backend type");
 

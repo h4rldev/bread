@@ -42,6 +42,7 @@ typedef struct wl_data_offer_listener wl_data_offer_listener_t;
 typedef struct wl_data_device_listener wl_data_device_listener_t;
 
 typedef struct wl_surface wl_surface_t;
+typedef struct wl_surface_listener wl_surface_listener_t;
 
 typedef struct wl_buffer wl_buffer_t;
 typedef struct wl_registry wl_registry_t;

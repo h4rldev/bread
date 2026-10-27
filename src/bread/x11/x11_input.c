@@ -177,8 +177,9 @@ void bread_x11_handle_button_release(x11_state_t *state,
 void bread_x11_handle_motion(x11_state_t *state,
                              xcb_motion_notify_event_t *event) {
   bread_log_debug("Handling motion");
-  state->input.mouse_x = (f64)event->event_x;
-  state->input.mouse_y = (f64)event->event_y;
+  f64 scale = state->scale > 0.0f ? (f64)state->scale : 1.0;
+  state->input.mouse_x = (f64)event->event_x / scale;
+  state->input.mouse_y = (f64)event->event_y / scale;
 }
 
 void bread_x11_cursor_init(x11_state_t *state) {

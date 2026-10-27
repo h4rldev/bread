@@ -132,6 +132,53 @@ static const xdg_toplevel_listener_t xdg_toplevel_listener = {
 //
 
 /**
+ * @brief Applies the compositors preferred buffer scale.
+ *
+ * @details Stores the scale and sets it on the surface. Fires a resize event at
+ * the unchanged logical size so the app re-renders at the new physical
+ * resolution.
+ *
+ * @param data The @ref wl_state_t.
+ * @param surface The surface whose buffer scale changed.
+ * @param factor The prefered buffer scale (physical px per logical px).
+ *
+ * @pre @c data and @c surface must be valid.
+ */
+static void surface_preferred_buffer_scale(void *data, wl_surface_t *surface,
+                                           i32 factor) {
+  wl_state_t *state = data;
+  if (factor < 1)
+    factor = 1;
+
+  if (factor == state->output_scale)
+    return;
+
+  state->output_scale = factor;
+  wl_surface_set_buffer_scale(surface, factor);
+
+  if (state->width == 0 || state->height == 0)
+    return;
+
+  bread_event_t event = {0};
+  event.type = BREAD_EVENT_WINDOW_RESIZE;
+  event.data.resize.width = state->width;
+  event.data.resize.height = state->height;
+  bread_fire_event(state->window, &event);
+}
+
+//
+//
+//
+
+static const wl_surface_listener_t wl_surface_listener = {
+    .preferred_buffer_scale = surface_preferred_buffer_scale,
+};
+
+//
+//
+//
+
+/**
  * @brief Configure the surface.
  *
  * @details Acks the configure, and updates the surface.
@@ -160,7 +207,7 @@ static void xdg_surface_configure(void *data, xdg_surface_t *surface,
 //
 
 /**
- * @brief The surface listener.
+ * @brief The xdg surface listener.
  *
  * @details Which is used to listen for configure events.
  */
@@ -193,7 +240,7 @@ static void global_registry_handler(void *data, wl_registry_t *registry, u32 id,
 
   if (strcmp(interface, wl_compositor_interface.name) == 0) {
     bread_log_debug("Binding compositor");
-    u32 compos_version = (version < 4) ? version : 4;
+    u32 compos_version = (version < 6) ? version : 6;
     state->compositor = wl_registry_bind(registry, id, &wl_compositor_interface,
                                          compos_version);
   }
@@ -381,6 +428,7 @@ static void wayland_init(bread_window_t *window) {
   state->repeat_next = 0.0;
   state->repeat_raw_keycode = 0;
   state->window = window;
+  state->output_scale = 1;
 
   state->display = wl_display_connect(null);
   if (!state->display) {
@@ -421,6 +469,8 @@ static void wayland_init(bread_window_t *window) {
     bread_log_fatal("Failed to create surface");
     goto fail;
   }
+
+  wl_surface_add_listener(state->wl_surface, &wl_surface_listener, state);
 
   if (!state->xdg_wm_base) {
     bread_log_fatal("xdg_wm_base is null");

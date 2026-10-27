@@ -193,6 +193,37 @@ bread_surface_t bread_window_get_surface(bread_window_t *window);
 //
 
 /**
+ * @brief Gets the window's content scale.
+ *
+ * @details The number of drawable pixels per logical pixel. Window sizes,
+ * resize events and pointer coordinates reported by bread are logical;
+ * multiply them by this factor when sizing a pixel-sized drawable, and divide
+ * a drawable's pixel size by it to lay out in logical units.
+ *
+ * On Wayland this is the compositor's preferred buffer scale for the window's
+ * surface and updates when the compositor changes it. On X11 it is derived
+ * from the Xft.dpi resource (Xft.dpi / 96.0) and is read once when the window
+ * is created; it falls back to 1.0 when the resource is unset. Moving the
+ * window to an output with a different X11 scale is not reflected until the
+ * window is recreated.
+ *
+ * @param window The window to query.
+ *
+ * @pre @c window must be a valid pointer and properly initialized through @ref
+ * bread_window_init().
+ *
+ * @return The content scale in drawable pixels per logical pixel; 1.0 when
+ * unscaled or unknown.
+ *
+ * @see bread_window_init()
+ */
+f32 bread_window_get_scale(bread_window_t *window);
+
+//
+//
+//
+
+/**
  * @brief Gets the backend type of the bread build.
  *
  * @details Which can be either @ref BREAD_BACKEND_WAYLAND or @ref

@@ -62,6 +62,7 @@ typedef struct {
 
   u16 width;
   u16 height;
+  f32 scale; /**< Drawable pixels per logical pixel (Xft.dpi / 96). */
   u32 refresh_mhz;
   b32 running;
 

@@ -169,8 +169,37 @@ static void x11_init(bread_window_t *window) {
     return;
   }
 
+  state->scale = 1.0f;
+  xcb_get_property_cookie_t rm_cookie = xcb_get_property(
+      state->connection, 0, state->screen->root, XCB_ATOM_RESOURCE_MANAGER,
+      XCB_ATOM_STRING, 0, 0xFFFFFFFFu);
+  xcb_get_property_reply_t *rm_reply =
+      xcb_get_property_reply(state->connection, rm_cookie, null);
+  if (rm_reply) {
+    int rm_len = xcb_get_property_value_length(rm_reply);
+    if (rm_len > 0) {
+      char *rm = malloc((size_t)rm_len + 1);
+      if (rm) {
+        memcpy(rm, xcb_get_property_value(rm_reply), (size_t)rm_len);
+        rm[rm_len] = '\0';
+        char *dpi_str = strstr(rm, "Xft.dpi:");
+        if (dpi_str) {
+          int dpi = (int)strtol(dpi_str + 8, null, 10);
+          if (dpi > 0)
+            state->scale = (f32)dpi / 96.0f;
+        }
+        free(rm);
+      }
+    }
+    free(rm_reply);
+  }
+
   state->width = window->width;
   state->height = window->height;
+
+  u16 device_width = (u16)((f32)window->width * state->scale + 0.5f);
+  u16 device_height = (u16)((f32)window->height * state->scale + 0.5f);
+
   state->xcb_window = xcb_generate_id(state->connection);
   if (state->xcb_window == XCB_NONE) {
     bread_log_fatal("Failed to generate window id");
@@ -189,7 +218,7 @@ static void x11_init(bread_window_t *window) {
           XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_POINTER_MOTION};
 
   xcb_create_window(state->connection, XCB_COPY_FROM_PARENT, state->xcb_window,
-                    state->screen->root, 0, 0, state->width, state->height, 0,
+                    state->screen->root, 0, 0, device_width, device_height, 0,
                     XCB_WINDOW_CLASS_INPUT_OUTPUT, state->screen->root_visual,
                     value_mask, value_list);
 
@@ -313,16 +342,23 @@ static void x11_poll_events(bread_window_t *window) {
     case XCB_CONFIGURE_NOTIFY: {
       bread_log_debug("Got configure notify");
       xcb_configure_notify_event_t *cfg = (xcb_configure_notify_event_t *)event;
-      if (state->width != cfg->width || state->height != cfg->height) {
-        state->width = cfg->width;
-        state->height = cfg->height;
-        state->window->width = (u16)state->width;
-        state->window->height = (u16)state->height;
 
+      u16 logical_width = state->scale > 0.0f
+                              ? (u16)((f32)cfg->width / state->scale + 0.5f)
+                              : cfg->width;
+      u16 logical_height = state->scale > 0.0f
+                               ? (u16)((f32)cfg->height / state->scale + 0.5f)
+                               : cfg->height;
+
+      if (state->width != logical_width || state->height != logical_height) {
+        state->width = logical_width;
+        state->height = logical_height;
+        state->window->width = logical_width;
+        state->window->height = logical_height;
         bread_event_t ev = {0};
         ev.type = BREAD_EVENT_WINDOW_RESIZE;
-        ev.data.resize.width = state->width;
-        ev.data.resize.height = state->height;
+        ev.data.resize.width = logical_width;
+        ev.data.resize.height = logical_height;
         bread_fire_event(state->window, &ev);
       }
     } break;
@@ -395,8 +431,8 @@ static void x11_poll_events(bread_window_t *window) {
 
       bread_event_t ev = {0};
       ev.type = BREAD_EVENT_MOUSE_MOVE;
-      ev.data.mouse_move.x = motion->event_x;
-      ev.data.mouse_move.y = motion->event_y;
+      ev.data.mouse_move.x = state->input.mouse_x;
+      ev.data.mouse_move.y = state->input.mouse_y;
       bread_fire_event(state->window, &ev);
     } break;
 
@@ -675,9 +711,9 @@ static void x11_set_min_size(bread_window_t *window, u16 width, u16 height) {
   if (width > 0 || height > 0) {
     hints.flags |= XCB_ICCCM_SIZE_HINT_P_MIN_SIZE;
     if (width > 0)
-      hints.min_width = width;
+      hints.min_width = (u16)((f32)width * state->scale + 0.5f);
     if (height > 0)
-      hints.min_height = height;
+      hints.min_height = (u16)((f32)height * state->scale + 0.5f);
   }
 
   window->min_width = width;
