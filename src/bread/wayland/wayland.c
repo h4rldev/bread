@@ -22,6 +22,7 @@
 #include <wayland-client-protocol.h>
 #include <wayland-client.h>
 
+#include <wayland/text-input-unstable-v3-client-protocol.h>
 #include <wayland/xdg-decoration-client-protocol.h>
 #include <wayland/xdg-shell-client-protocol.h>
 
@@ -256,6 +257,11 @@ static void global_registry_handler(void *data, wl_registry_t *registry, u32 id,
     bread_wayland_seat_bind(state, registry, id, version);
   }
 
+  else if (strcmp(interface, zwp_text_input_manager_v3_interface.name) == 0) {
+    state->text_input_manager =
+        wl_registry_bind(registry, id, &zwp_text_input_manager_v3_interface, 1);
+  }
+
   else if (strcmp(interface, zxdg_decoration_manager_v1_interface.name) == 0) {
     bread_log_debug("Binding SSD manager");
     u32 decoration_version = (version < 1) ? version : 1;
@@ -315,6 +321,11 @@ static void wl_state_cleanup(wl_state_t *state) {
     bread_log_debug("Cleaning up seat");
     bread_wayland_seat_cleanup(state);
     state->seat = null;
+  }
+
+  if (state->text_input_manager) {
+    zwp_text_input_manager_v3_destroy(state->text_input_manager);
+    state->text_input_manager = null;
   }
 
   if (state->decoration) {

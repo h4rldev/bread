@@ -10,6 +10,8 @@
 #include <unistd.h>
 #include <wayland-client-protocol.h>
 
+#include <wayland/text-input-unstable-v3-client-protocol.h>
+
 #include <xkbcommon/xkbcommon.h>
 
 #include <bread/event.h>
@@ -608,6 +610,174 @@ static const wl_seat_listener_t seat_listener = {
 //
 //
 
+/**
+ * @brief Handles the text input enter event.
+ *
+ * @details No-op; the compositor routes events to the focused surface.
+ *
+ * @param data The wl_state.
+ * @param text_input The text input.
+ * @param surface The entered surface.
+ *
+ * @pre All parameters must be valid.
+ */
+static void text_input_enter(void *data, zwp_text_input_v3_t *text_input,
+                             wl_surface_t *surface) {
+  (void)data;
+  (void)text_input;
+  (void)surface;
+}
+
+//
+//
+//
+
+/**
+ * @brief Handles the text input leave event.
+ *
+ * @details No-op; the compositor clears the focus itself.
+ *
+ * @param data The wl_state.
+ * @param text_input The text input.
+ * @param surface The left surface.
+ *
+ * @pre All parameters must be valid.
+ */
+static void text_input_leave(void *data, zwp_text_input_v3_t *text_input,
+                             wl_surface_t *surface) {
+  (void)data;
+  (void)text_input;
+  (void)surface;
+}
+
+//
+//
+//
+
+/**
+ * @brief Handles the IME pre-edit string.
+ *
+ * @details Fires BREAD_EVENT_TEXT_PREEDIT with the string and cursor offset.
+ * The string is only valid during the event callback.
+ *
+ * @param data The wl_state.
+ * @param text_input The text input.
+ * @param text The pre-edit string, or null.
+ * @param cursor_begin The cursor offset in bytes.
+ * @param cursor_end The selection end offset in bytes.
+ *
+ * @pre All parameters must be valid.
+ */
+static void text_input_preedit_string(void *data,
+                                      zwp_text_input_v3_t *text_input,
+                                      const cstr *text, i32 cursor_begin,
+                                      i32 cursor_end) {
+  wl_state_t *state = data;
+  bread_event_t event = {0};
+  event.type = BREAD_EVENT_TEXT_PREEDIT;
+  event.data.text_preedit.text = text ? text : "";
+  event.data.text_preedit.cursor = cursor_begin > 0 ? (u32)cursor_begin : 0;
+  bread_fire_event(state->window, &event);
+}
+
+//
+//
+//
+
+/**
+ * @brief Handles the IME committed text.
+ *
+ * @details Fires BREAD_EVENT_TEXT_COMMIT with the string. The string is only
+ * valid during the event callback.
+ *
+ * @param data The wl_state.
+ * @param text_input The text input.
+ * @param text The committed string, or null.
+ *
+ * @pre All parameters must be valid.
+ */
+static void text_input_commit_string(void *data,
+                                     zwp_text_input_v3_t *text_input,
+                                     const cstr *text) {
+  wl_state_t *state = data;
+  bread_event_t event = {0};
+  event.type = BREAD_EVENT_TEXT_COMMIT;
+  event.data.text_commit.text = text ? text : "";
+  bread_fire_event(state->window, &event);
+}
+
+//
+//
+//
+
+/**
+ * @brief Handles an IME surrounding-text deletion request.
+ *
+ * @details Fires BREAD_EVENT_TEXT_DELETE with the byte counts.
+ *
+ * @param data The wl_state.
+ * @param text_input The text input.
+ * @param before_length Bytes to delete before the cursor.
+ * @param after_length Bytes to delete after the cursor.
+ *
+ * @pre All parameters must be valid.
+ */
+static void text_input_delete_surrounding_text(void *data,
+                                               zwp_text_input_v3_t *text_input,
+                                               u32 before_length,
+                                               u32 after_length) {
+  wl_state_t *state = data;
+  bread_event_t event = {0};
+  event.type = BREAD_EVENT_TEXT_DELETE;
+  event.data.text_delete.before_length = before_length;
+  event.data.text_delete.after_length = after_length;
+  bread_fire_event(state->window, &event);
+}
+
+//
+//
+//
+
+/**
+ * @brief Handles the text input done event.
+ *
+ * @details No-op; the client's state was already committed.
+ *
+ * @param data The wl_state.
+ * @param text_input The text input.
+ * @param serial The compositor serial.
+ *
+ * @pre All parameters must be valid.
+ */
+static void text_input_done(void *data, zwp_text_input_v3_t *text_input,
+                            u32 serial) {
+  (void)data;
+  (void)text_input;
+  (void)serial;
+}
+
+//
+//
+//
+
+/**
+ * @brief The text input listener.
+ *
+ * @details Routes IME pre-edit, commit, delete, and done events.
+ */
+static const zwp_text_input_v3_listener_t text_input_listener = {
+    .enter = text_input_enter,
+    .leave = text_input_leave,
+    .preedit_string = text_input_preedit_string,
+    .commit_string = text_input_commit_string,
+    .delete_surrounding_text = text_input_delete_surrounding_text,
+    .done = text_input_done,
+};
+
+//
+//
+//
+
 void bread_wayland_seat_init(wl_state_t *state) {
   bread_log_debug("Initializing wayland seat");
   state->xkb_context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
@@ -637,6 +807,12 @@ void bread_wayland_seat_cleanup(wl_state_t *state) {
     state->pointer = null;
   }
 
+  if (state->text_input) {
+    zwp_text_input_v3_destroy(state->text_input);
+    state->text_input = null;
+    state->text_input_enabled = false;
+  }
+
   if (state->seat) {
     bread_log_debug("Destroying seat");
     wl_seat_destroy(state->seat);
@@ -660,6 +836,39 @@ void bread_wayland_seat_cleanup(wl_state_t *state) {
     xkb_context_unref(state->xkb_context);
     state->xkb_context = null;
   }
+}
+
+void bread_wayland_text_input_enable(wl_state_t *state, f32 x, f32 y, f32 w,
+                                     f32 h) {
+  if (!state || !state->text_input_manager || !state->seat)
+    return;
+
+  if (!state->text_input) {
+    state->text_input = zwp_text_input_manager_v3_get_text_input(
+        state->text_input_manager, state->seat);
+    if (!state->text_input)
+      return;
+    zwp_text_input_v3_add_listener(state->text_input, &text_input_listener,
+                                   state);
+  }
+
+  if (!state->text_input_enabled) {
+    zwp_text_input_v3_enable(state->text_input);
+    state->text_input_enabled = true;
+  }
+
+  zwp_text_input_v3_set_cursor_rectangle(state->text_input, (i32)x, (i32)y,
+                                         (i32)(w > 0 ? w : 1),
+                                         (i32)(h > 0 ? h : 1));
+  zwp_text_input_v3_commit(state->text_input);
+}
+
+void bread_wayland_text_input_disable(wl_state_t *state) {
+  if (!state || !state->text_input || !state->text_input_enabled)
+    return;
+  zwp_text_input_v3_disable(state->text_input);
+  zwp_text_input_v3_commit(state->text_input);
+  state->text_input_enabled = false;
 }
 
 void bread_wayland_cursor_init(wl_state_t *state) {

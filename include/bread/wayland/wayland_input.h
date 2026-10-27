@@ -76,6 +76,52 @@ void bread_wayland_seat_cleanup(wl_state_t *state);
 //
 
 /**
+ * @brief Enables Wayland text input.
+ *
+ * @details Lazily creates the seat's text input, enables it, anchors the IME
+ * candidate window at the given rectangle, and commits the state.
+ *
+ * @note For internal use, no real reason to use this when using the library.
+ *
+ * @param state The wl_state to enable text input for.
+ * @param x The caret rectangle x, in logical surface coordinates.
+ * @param y The caret rectangle y, in logical surface coordinates.
+ * @param w The caret rectangle width, in logical surface coordinates.
+ * @param h The caret rectangle height, in logical surface coordinates.
+ *
+ * @pre @c state must be a valid pointer and initialized through @ref
+ * bread_wayland_seat_bind().
+ *
+ * @see bread_wayland_text_input_disable()
+ */
+void bread_wayland_text_input_enable(wl_state_t *state, f32 x, f32 y, f32 w,
+                                     f32 h);
+
+//
+//
+//
+
+/**
+ * @brief Disables Wayland text input.
+ *
+ * @details Disables the seat's text input if it was enabled. Safe to call when
+ * it was never enabled.
+ *
+ * @note For internal use, no real reason to use this when using the library.
+ *
+ * @param state The wl_state to disable text input for.
+ *
+ * @pre @c state must be a valid pointer.
+ *
+ * @see bread_wayland_text_input_enable()
+ */
+void bread_wayland_text_input_disable(wl_state_t *state);
+
+//
+//
+//
+
+/**
  * @brief Initializes the wayland cursor.
  *
  * @details Finds the cursor theme, cursor size, and loads them, then loads each

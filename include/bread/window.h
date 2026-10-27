@@ -224,6 +224,52 @@ f32 bread_window_get_scale(bread_window_t *window);
 //
 
 /**
+ * @brief Enables text input for the window.
+ *
+ * @details Enables the compositor's text input and anchors its candidate
+ * window at the given rectangle, in logical window coordinates. Call this each
+ * frame while a text field is focused, and @ref bread_window_text_input_disable
+ * when it loses focus. Wayland only; the X11 backend ignores the rectangle and
+ * does nothing.
+ *
+ * @param window The window to enable text input for.
+ * @param x The caret rectangle x, in logical coordinates.
+ * @param y The caret rectangle y, in logical coordinates.
+ * @param w The caret rectangle width, in logical coordinates.
+ * @param h The caret rectangle height, in logical coordinates.
+ *
+ * @pre @c window must be a valid pointer and properly initialized through @ref
+ * bread_window_init().
+ *
+ * @see bread_window_text_input_disable()
+ */
+void bread_window_text_input_enable(bread_window_t *window, f32 x, f32 y, f32 w,
+                                    f32 h);
+
+//
+//
+//
+
+/**
+ * @brief Disables text input for the window.
+ *
+ * @details Disables the compositor's text input. Safe to call when it was never
+ * enabled. Wayland only; the X11 backend does nothing.
+ *
+ * @param window The window to disable text input for.
+ *
+ * @pre @c window must be a valid pointer and properly initialized through @ref
+ * bread_window_init().
+ *
+ * @see bread_window_text_input_enable()
+ */
+void bread_window_text_input_disable(bread_window_t *window);
+
+//
+//
+//
+
+/**
  * @brief Gets the backend type of the bread build.
  *
  * @details Which can be either @ref BREAD_BACKEND_WAYLAND or @ref

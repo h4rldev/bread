@@ -12,6 +12,7 @@
 #include <wayland-cursor.h>
 #include <xkbcommon/xkbcommon.h>
 
+#include <wayland/text-input-unstable-v3-client-protocol.h>
 #include <wayland/xdg-decoration-client-protocol.h>
 #include <wayland/xdg-shell-client-protocol.h>
 
@@ -55,6 +56,10 @@ typedef struct wl_cursor_image wl_cursor_image_t;
 typedef struct wl_array wl_array_t;
 typedef struct wl_output wl_output_t;
 
+typedef struct zwp_text_input_manager_v3 zwp_text_input_manager_v3_t;
+typedef struct zwp_text_input_v3 zwp_text_input_v3_t;
+typedef struct zwp_text_input_v3_listener zwp_text_input_v3_listener_t;
+
 typedef struct xkb_context xkb_context_t;
 typedef struct xkb_keymap xkb_keymap_t;
 typedef struct xkb_state xkb_state_t;
@@ -78,110 +83,71 @@ typedef struct zxdg_toplevel_decoration_v1 zxdg_toplevel_decoration_v1_t;
 
 /**
  * @brief Wayland backend state.
- * @details Holds every protocol object the backend binds (display, registry,
- *   compositor, shm, xdg shell, decorations, seat/keyboard/pointer), XKB
- *   keymap/state, cursor theme and cached cursors, the input snapshot, and the
- *   data-device clipboard objects and buffers. One instance per window, owned
- *   by @ref bread_window_t.
  *
- * @param window Owning bread window (back-pointer).
- * @param display The wl_display connection.
- * @param registry The wl_registry.
- * @param compositor The wl_compositor.
- * @param shm The wl_shm pool allocator.
- * @param wl_surface The window's wl_surface.
- * @param xdg_surface The xdg_surface role object.
- * @param xdg_toplevel The xdg_toplevel role object.
- * @param xdg_wm_base The xdg_wm_base shell.
- * @param decoration_manager The xdg-decoration manager.
- * @param decoration The toplevel decoration object.
- * @param seat The wl_seat.
- * @param keyboard The seat keyboard.
- * @param pointer The seat pointer.
- * @param xkb_context XKB context.
- * @param xkb_keymap Compiled keymap.
- * @param xkb_state Live keyboard state.
- * @param width Current window width in pixels.
- * @param height Current window height in pixels.
- * @param refresh_mhz Current monitor refresh rate in millihertz.
- * @param output_scale Current output scale factor.
- * @param running True while the window should keep running.
- * @param input Latest input snapshot (pointer/keys).
- * @param repeat_key Key currently held for autorepeat, else BREAD_KEY_MAX.
- * @param repeat_rate Repeats per second from wl_keyboard.repeat_info.
- * @param repeat_delay ms before the first repeat.
- * @param repeat_next CLOCK_MONOTONIC time (s) of the next repeat.
- * @param repeat_raw_keycode Raw evdev code of the held key.
- * @param cursor_theme Loaded cursor theme.
- * @param cursors Cached cursors indexed by @ref bread_cursor_type_t.
- * @param current_cursor Currently applied cursor.
- * @param cursor_surface Surface used to set the pointer cursor.
- * @param pointer_serial Last pointer-enter serial (set_cursor needs it).
- * @param data_device_manager The wl_data_device_manager.
- * @param data_device The seat's data device.
- * @param data_source Source we created while owning the selection, else null.
- * @param data_offer Offer received for another client's selection, else null.
- * @param offer_mime Best text mime the current offer supports, else null.
- * @param input_serial Last seat-event serial (set_selection needs it).
- * @param clipboard Owned copy of the text we publish as selection owner.
- * @param clipboard_len Length of @ref clipboard in bytes.
- * @param clipboard_read Owned buffer holding text read from another owner.
+ * @details Holds every protocol object the backend binds (display, registry,
+ * compositor, shm, xdg shell, decorations, seat/keyboard/pointer), XKB
+ * keymap/state, cursor theme, and cached cursors, the input snapshot, and the
+ * data-device clipboard objects and buffers. One instance per window, owned
+ * by @ref bread_window_t.
  */
 typedef struct {
-  bread_window_t *window;
+  bread_window_t *window; /**< Owning bread window (back-pointer). */
 
-  wl_display_t *display;
-  wl_registry_t *registry;
-  wl_compositor_t *compositor;
-  wl_shm_t *shm;
-  wl_surface_t *wl_surface;
+  wl_display_t *display;       /**< The wl_display connection. */
+  wl_registry_t *registry;     /**< The wl_registry. */
+  wl_compositor_t *compositor; /**< The wl_compositor. */
+  wl_shm_t *shm;               /**< The wl_shm pool allocator. */
+  wl_surface_t *wl_surface;    /**< The window's wl_surface. */
 
-  xdg_surface_t *xdg_surface;
-  xdg_toplevel_t *xdg_toplevel;
-  xdg_wm_base_t *xdg_wm_base;
+  zwp_text_input_manager_v3_t *text_input_manager; /**< IME manager. */
+  zwp_text_input_v3_t *text_input;                 /**< Seat text input. */
+  b32 text_input_enabled; /**< Whether text input is enabled. */
 
-  zxdg_decoration_manager_v1_t *decoration_manager;
-  zxdg_toplevel_decoration_v1_t *decoration;
+  xdg_surface_t *xdg_surface;   /**< The xdg_surface role object. */
+  xdg_toplevel_t *xdg_toplevel; /**< The xdg_toplevel role object. */
+  xdg_wm_base_t *xdg_wm_base;   /**< The xdg_wm_base shell. */
 
-  wl_seat_t *seat;
-  wl_keyboard_t *keyboard;
-  wl_pointer_t *pointer;
+  zxdg_decoration_manager_v1_t *decoration_manager; /**< Decoration manager. */
+  zxdg_toplevel_decoration_v1_t *decoration;        /**< Toplevel decoration. */
 
-  xkb_context_t *xkb_context;
-  xkb_keymap_t *xkb_keymap;
-  xkb_state_t *xkb_state;
+  wl_seat_t *seat;         /**< The wl_seat. */
+  wl_keyboard_t *keyboard; /**< The seat keyboard. */
+  wl_pointer_t *pointer;   /**< The seat pointer. */
 
-  u16 width;
-  u16 height;
-  u32 refresh_mhz;
-  i32 output_scale;
-  b32 running;
+  xkb_context_t *xkb_context; /**< XKB context. */
+  xkb_keymap_t *xkb_keymap;   /**< Compiled keymap. */
+  xkb_state_t *xkb_state;     /**< Live keyboard state. */
 
-  bread_input_state_t input;
+  u16 width;        /**< Current window width in logical pixels. */
+  u16 height;       /**< Current window height in logical pixels. */
+  u32 refresh_mhz;  /**< Current monitor refresh rate in millihertz. */
+  i32 output_scale; /**< Current output scale factor. */
+  b32 running;      /**< True while the window should keep running. */
 
-  bread_key_t
-      repeat_key;   // key currently held for autorepeat, else BREAD_KEY_MAX
-  i32 repeat_rate;  // repeats per second from wl_keyboard.repeat_info
-  i32 repeat_delay; // ms before the first repeat
-  f64 repeat_next;  // CLOCK_MONOTONIC time (s) of the next repeat
-  i32 repeat_raw_keycode; // raw evdev code of the held key
+  bread_input_state_t input; /**< Latest input snapshot (pointer/keys). */
 
-  wl_cursor_theme_t *cursor_theme;
-  wl_cursor_t *cursors[BREAD_CURSOR_MAX];
-  wl_cursor_t *current_cursor;
-  wl_surface_t *cursor_surface;
-  u32 pointer_serial;
+  bread_key_t repeat_key; /**< Held key for autorepeat, else BREAD_KEY_MAX. */
+  i32 repeat_rate;        /**< Repeats per second from repeat_info. */
+  i32 repeat_delay;       /**< ms before the first repeat. */
+  f64 repeat_next;        /**< CLOCK_MONOTONIC time (s) of the next repeat. */
+  i32 repeat_raw_keycode; /**< Raw evdev code of the held key. */
 
-  wl_data_device_manager_t *data_device_manager;
-  wl_data_device_t *data_device;
-  wl_data_source_t *data_source;
-  wl_data_offer_t *data_offer;
+  wl_cursor_theme_t *cursor_theme;        /**< Loaded cursor theme. */
+  wl_cursor_t *cursors[BREAD_CURSOR_MAX]; /**< Cached cursors by type. */
+  wl_cursor_t *current_cursor;            /**< Currently applied cursor. */
+  wl_surface_t *cursor_surface; /**< Surface used to set the cursor. */
+  u32 pointer_serial;           /**< Last pointer-enter serial. */
 
-  cstr *offer_mime; // best text mime the current offer supports
-  u32 input_serial; // last seat-event serial (set_selection needs it)
-  char *clipboard;  // owned copy for `send`
-  u32 clipboard_len;
-  char *clipboard_read; // owned buffer returned by `get`
+  wl_data_device_manager_t *data_device_manager; /**< wl_data_device_manager. */
+  wl_data_device_t *data_device;                 /**< The seat's data device. */
+  wl_data_source_t *data_source; /**< Source while owning the selection. */
+  wl_data_offer_t *data_offer;   /**< Offer for another client's selection. */
+
+  cstr *offer_mime;     /**< Best text mime the current offer supports. */
+  u32 input_serial;     /**< Last seat-event serial. */
+  char *clipboard;      /**< Owned copy of the published selection. */
+  u32 clipboard_len;    /**< Length of clipboard in bytes. */
+  char *clipboard_read; /**< Owned buffer for text read from an owner. */
 } wl_state_t;
 
 #endif // !BREAD_WAYLAND

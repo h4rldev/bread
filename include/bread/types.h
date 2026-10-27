@@ -11,13 +11,10 @@
 
 /**
  * @brief The window surface.
- *
- * @param handle The handle of the window surface.
- * @param display The display of the window surface.
  */
 typedef struct bread_surface {
-  void *handle;
-  void *display;
+  void *handle;  /**< The handle of the window surface. */
+  void *display; /**< The display of the window surface. */
 } bread_surface_t;
 
 //
@@ -198,21 +195,15 @@ typedef enum bread_mod {
 
 /**
  * @brief The input state of the window.
- *
- * @param keys The state of the keys.
- * @param mouse_buttons The state of the mouse buttons.
- * @param mouse_x The current mouse x position.
- * @param mouse_y The current mouse y position.
- * @param scroll_x The current scroll x position.
- * @param scroll_y The current scroll y position.
  */
 typedef struct {
-  b32 keys[BREAD_KEY_MAX];
-  b32 mouse_buttons[BREAD_MOUSE_BUTTON_MAX];
-  f64 mouse_x;
-  f64 mouse_y;
-  f64 scroll_x;
-  f64 scroll_y;
+  b32 keys[BREAD_KEY_MAX];                   /**< The state of the keys. */
+  b32 mouse_buttons[BREAD_MOUSE_BUTTON_MAX]; /**< The state of the mouse
+                                                buttons. */
+  f64 mouse_x;  /**< The current mouse x position. */
+  f64 mouse_y;  /**< The current mouse y position. */
+  f64 scroll_x; /**< The current scroll x position. */
+  f64 scroll_y; /**< The current scroll y position. */
 } bread_input_state_t;
 
 //
@@ -221,35 +212,22 @@ typedef struct {
 
 /**
  * @brief The cursor type.
- *
- * @param BREAD_CURSOR_DEFAULT The default cursor (pointer).
- * @param BREAD_CURSOR_POINTER The pointer cursor (default).
- * @param BREAD_CURSOR_HAND The hand cursor.
- * @param BREAD_CURSOR_TEXT The text cursor.
- * @param BREAD_CURSOR_MOVE The move cursor.
- * @param BREAD_CURSOR_RESIZE_EW The horizontal resize cursor (east-west).
- * @param BREAD_CURSOR_RESIZE_NS The vertical resize cursor (north-south).
- * @param BREAD_CURSOR_RESIZE_NESW The diagonal resize cursor
- * (northeast-southwest).
- * @param BREAD_CURSOR_RESIZE_NWSE The anti-diagonal resize cursor
- * (northwest-southeast).
- * @param BREAD_CURSOR_NOT_ALLOWED The not allowed cursor.
- * @param BREAD_CURSOR_WAIT The wait cursor.
- * @param BREAD_CURSOR_MAX The maximum cursor type, used for bounds checking.
  */
 typedef enum bread_cursor_type {
-  BREAD_CURSOR_DEFAULT = 0,
-  BREAD_CURSOR_POINTER,
-  BREAD_CURSOR_HAND,
-  BREAD_CURSOR_TEXT,
-  BREAD_CURSOR_MOVE,
-  BREAD_CURSOR_RESIZE_EW,
-  BREAD_CURSOR_RESIZE_NS,
-  BREAD_CURSOR_RESIZE_NESW,
-  BREAD_CURSOR_RESIZE_NWSE,
-  BREAD_CURSOR_NOT_ALLOWED,
-  BREAD_CURSOR_WAIT,
-  BREAD_CURSOR_MAX
+  BREAD_CURSOR_DEFAULT = 0, /**< The default cursor (pointer). */
+  BREAD_CURSOR_POINTER,     /**< The pointer cursor (default). */
+  BREAD_CURSOR_HAND,        /**< The hand cursor. */
+  BREAD_CURSOR_TEXT,        /**< The text cursor. */
+  BREAD_CURSOR_MOVE,        /**< The move cursor. */
+  BREAD_CURSOR_RESIZE_EW,   /**< The horizontal resize cursor (east-west). */
+  BREAD_CURSOR_RESIZE_NS,   /**< The vertical resize cursor (north-south). */
+  BREAD_CURSOR_RESIZE_NESW, /**< The diagonal resize cursor
+                             * (northeast-southwest). */
+  BREAD_CURSOR_RESIZE_NWSE, /**< The anti-diagonal resize cursor
+                               (northwest-southeast). */
+  BREAD_CURSOR_NOT_ALLOWED, /**< The not allowed cursor */
+  BREAD_CURSOR_WAIT,        /**< The wait cursor. */
+  BREAD_CURSOR_MAX /**< The maximum cursor type, used for bounds checking. */
 } bread_cursor_type_t;
 
 //
@@ -259,28 +237,21 @@ typedef enum bread_cursor_type {
 /**
  * @brief The event type of the window.
  *
- * @param BREAD_EVENT_NONE No event.
- * @param BREAD_EVENT_WINDOW_CLOSE The window was closed.
- * @param BREAD_EVENT_WINDOW_RESIZE The window was resized.
- * @param BREAD_EVENT_KEY_PRESS A key was pressed.
- * @param BREAD_EVENT_KEY_RELEASE A key was released.
- * @param BREAD_EVENT_MOUSE_MOVE The mouse was moved.
- * @param BREAD_EVENT_MOUSE_PRESS A mouse button was pressed.
- * @param BREAD_EVENT_MOUSE_RELEASE A mouse button was released.
- * @param BREAD_EVENT_MOUSE_SCROLL The mouse was scrolled.
- *
  * @note If any other events are needed, they'll be added here.
  */
 typedef enum {
-  BREAD_EVENT_NONE,
-  BREAD_EVENT_WINDOW_CLOSE,
-  BREAD_EVENT_WINDOW_RESIZE,
-  BREAD_EVENT_KEY_PRESS,
-  BREAD_EVENT_KEY_RELEASE,
-  BREAD_EVENT_MOUSE_MOVE,
-  BREAD_EVENT_MOUSE_PRESS,
-  BREAD_EVENT_MOUSE_RELEASE,
-  BREAD_EVENT_MOUSE_SCROLL,
+  BREAD_EVENT_NONE,          /**< No event. */
+  BREAD_EVENT_WINDOW_CLOSE,  /**< The window was closed. */
+  BREAD_EVENT_WINDOW_RESIZE, /**< The window was resized. */
+  BREAD_EVENT_KEY_PRESS,     /**< A key was pressed. */
+  BREAD_EVENT_KEY_RELEASE,   /**< A key was released. */
+  BREAD_EVENT_MOUSE_MOVE,    /**< The mouse was moved. */
+  BREAD_EVENT_MOUSE_PRESS,   /**< A mouse button was pressed. */
+  BREAD_EVENT_MOUSE_RELEASE, /**< A mouse button was released. */
+  BREAD_EVENT_MOUSE_SCROLL,  /**< The mouse was scrolled. */
+  BREAD_EVENT_TEXT_PREEDIT,  /**< The IME pre-edit string changed. */
+  BREAD_EVENT_TEXT_COMMIT,   /**< The IME committed text. */
+  BREAD_EVENT_TEXT_DELETE,   /**< The IME requested a delete. */
 } bread_event_type_t;
 
 //
@@ -289,12 +260,9 @@ typedef enum {
 
 /**
  * @brief An event of the window.
- *
- * @param type The type of the event.
- * @param data The data of the event.
  */
 typedef struct {
-  bread_event_type_t type;
+  bread_event_type_t type; /**< The type of the event. */
   union {
     struct {
       u16 width;
@@ -316,7 +284,18 @@ typedef struct {
       f64 dx;
       f64 dy;
     } mouse_scroll;
-  } data;
+    struct {
+      const cstr *text; /**< Valid only during the callback. */
+      u32 cursor;       /**< IME cursor byte offset inside text. */
+    } text_preedit;
+    struct {
+      const cstr *text; /**< Valid only during the callback. */
+    } text_commit;
+    struct {
+      u32 before_length; /**< Bytes to delete before the cursor. */
+      u32 after_length;  /**< Bytes to delete after the cursor. */
+    } text_delete;
+  } data; /**< The data of the event. */
 } bread_event_t;
 
 //
@@ -333,10 +312,12 @@ typedef struct {
  * @param BREAD_BACKEND_MAX The maximum backend type, used for bounds checking.
  */
 typedef enum bread_backend {
-  BREAD_BACKEND_UNKNOWN = -1,
-  BREAD_BACKEND_WAYLAND,
-  BREAD_BACKEND_X11,
-  BREAD_BACKEND_MAX
+  BREAD_BACKEND_UNKNOWN =
+      -1, /**< The window is using an unknown backend, meaning that either it
+             was build incorrectly or the backend is not supported. */
+  BREAD_BACKEND_WAYLAND, /**< The window is using the wayland backend. */
+  BREAD_BACKEND_X11,     /**< The window is using the X11 backend. */
+  BREAD_BACKEND_MAX /**< The maximum backend type, used for bounds checking. */
 } bread_backend_type_t;
 
 //
@@ -360,35 +341,25 @@ typedef void (*bread_event_callback_t)(bread_event_t *event, void *userdata);
 /**
  * @brief The window struct.
  *
- * @param width The width of the window.
- * @param height The height of the window.
- *
- * @param min_width The minimum width of the window.
- * @param min_height The minimum height of the window.
- *
- * @param title The title of the window.
- * @param class The class/app-id of the window.
- *
- * @param backend The current backend of the window.
- * @param arena The arena of the window.
- *
- * @param event_callback The callback function for the window events.
- * @param event_userdata The userdata passed to the callback function.
+ * @details Carries data required to initialize and maintain a window in
+ * bread.
  */
 typedef struct bread_window {
-  u16 width;
-  u16 height;
+  u16 width;  /**< The width of the window. */
+  u16 height; /**< The height of the window. */
 
-  u16 min_width;
-  u16 min_height;
+  u16 min_width;  /**< The minimum width of the window. */
+  u16 min_height; /**< The minimum height of the window. */
 
-  string *title;
-  string *class;
-  void *backend;
-  arena_t *arena;
+  string *title; /**< The title of the window. */
+  string *class; /**< The class/app-id of the window. */
 
-  bread_event_callback_t event_callback;
-  void *event_userdata;
+  void *backend;  /**< The current backend of the window. */
+  arena_t *arena; /**< The shared arena of the window. */
+
+  bread_event_callback_t
+      event_callback;   /**< The callback function for the window's events. */
+  void *event_userdata; /**< The userdata passed to the callback function. */
 } bread_window_t;
 
 //
@@ -398,18 +369,6 @@ typedef struct bread_window {
 /**
  * @brief The backend vtable of the window, exposing the functionality of each
  * backend, based on build.
- *
- * @param init The init function of the backend.
- * @param poll_events The poll_events function of the backend.
- * @param wait_events The wait_events function of the backend.
- * @param should_close The should_close function of the backend.
- * @param destroy The destroy function of the backend.
- * @param get_surface The get_surface function of the backend.
- * @param set_title The set_title function of the backend.
- * @param set_min_size The set_min_size function of the backend.
- * @param clipboard_set The clipboard_set function of the backend.
- * @param clipboard_get The clipboard_get function of the backend.
- * @param backend_type The backend type of the bread build.
  */
 typedef struct {
   void (*init)(bread_window_t *window);
@@ -431,12 +390,6 @@ typedef struct {
 
 /**
  * @brief The log level of the bread build.
- *
- * @param BREAD_LOG_LEVEL_DEBUG Debug level.
- * @param BREAD_LOG_LEVEL_INFO Info level.
- * @param BREAD_LOG_LEVEL_WARN Warn level.
- * @param BREAD_LOG_LEVEL_ERROR Error level.
- * @param BREAD_LOG_LEVEL_FATAL Fatal level.
  */
 typedef enum bread_log_level {
   BREAD_LOG_LEVEL_DEBUG,
