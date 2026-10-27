@@ -871,6 +871,34 @@ void bread_wayland_text_input_disable(wl_state_t *state) {
   state->text_input_enabled = false;
 }
 
+void bread_wayland_text_input_set_surrounding(wl_state_t *state,
+                                              const cstr *text, u32 cursor,
+                                              u32 anchor) {
+  if (!state || !state->text_input || !state->text_input_enabled || !text)
+    return;
+
+  u32 len = (u32)strlen(text);
+  if (len > 4000) {
+    len = 4000;
+    while (len > 0 && ((u8)text[len] & 0xC0) == 0x80)
+      len--;
+  }
+
+  char buf[4001];
+  if (len > 0)
+    memcpy(buf, text, len);
+  buf[len] = '\0';
+
+  if (cursor > len)
+    cursor = len;
+  if (anchor > len)
+    anchor = len;
+
+  zwp_text_input_v3_set_surrounding_text(state->text_input, buf, (i32)cursor,
+                                         (i32)anchor);
+  zwp_text_input_v3_commit(state->text_input);
+}
+
 void bread_wayland_cursor_init(wl_state_t *state) {
   const cstr *cursor_theme = getenv("HYPRCURSOR_THEME");
   if (!cursor_theme || !*cursor_theme) {

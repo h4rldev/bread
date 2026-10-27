@@ -264,6 +264,21 @@ void bread_window_text_input_disable(bread_window_t *window) {
 #endif
 }
 
+void bread_window_text_input_set_surrounding(bread_window_t *window,
+                                             const cstr *text, u32 cursor,
+                                             u32 anchor) {
+  if (!window || !window->backend)
+    return;
+#if BREAD_WAYLAND
+  wl_state_t *state = window->backend;
+  bread_wayland_text_input_set_surrounding(state, text, cursor, anchor);
+#elif BREAD_X11
+  (void)text;
+  (void)cursor;
+  (void)anchor;
+#endif
+}
+
 u32 bread_window_get_mods(bread_window_t *window) {
   if (!window || !window->backend)
     return 0;

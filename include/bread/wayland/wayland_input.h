@@ -122,6 +122,32 @@ void bread_wayland_text_input_disable(wl_state_t *state);
 //
 
 /**
+ * @brief Sets the surrounding text for the compositor's IME.
+ *
+ * @details Sends the editing buffer (excluding preedit) with the caret and
+ * selection anchor as byte offsets, clamped to the protocol's 4000-byte text
+ * limit, and commits it. No-op unless text input is enabled.
+ *
+ * @note For internal use, no real reason to use this when using the library.
+ *
+ * @param state The wl_state to set surrounding text for.
+ * @param text The editing buffer, excluding preedit, in UTF-8.
+ * @param cursor The caret byte offset into @p text.
+ * @param anchor The selection anchor byte offset into @p text.
+ *
+ * @pre @c state must be a valid pointer.
+ *
+ * @see bread_wayland_text_input_enable()
+ */
+void bread_wayland_text_input_set_surrounding(wl_state_t *state,
+                                              const cstr *text, u32 cursor,
+                                              u32 anchor);
+
+//
+//
+//
+
+/**
  * @brief Initializes the wayland cursor.
  *
  * @details Finds the cursor theme, cursor size, and loads them, then loads each

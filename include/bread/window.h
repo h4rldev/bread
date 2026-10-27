@@ -270,6 +270,34 @@ void bread_window_text_input_disable(bread_window_t *window);
 //
 
 /**
+ * @brief Sets the text surrounding the cursor for the compositor's IME.
+ *
+ * @details Sends the editing buffer, excluding any preedit text, together
+ * with the caret and selection anchor as byte offsets. Call this while text
+ * input is enabled and whenever the buffer, caret, or selection changes,
+ * including after applying an IME commit or delete. Wayland only; the X11
+ * backend has no equivalent and does nothing.
+ *
+ * @param window The window to report surrounding text for.
+ * @param text The editing buffer, excluding preedit, in UTF-8.
+ * @param cursor The caret byte offset into @p text.
+ * @param anchor The selection anchor byte offset into @p text; equal to
+ * @p cursor when there is no selection.
+ *
+ * @pre @c window must be a valid pointer and properly initialized through @ref
+ * bread_window_init().
+ *
+ * @see bread_window_text_input_enable()
+ */
+void bread_window_text_input_set_surrounding(bread_window_t *window,
+                                             const cstr *text, u32 cursor,
+                                             u32 anchor);
+
+//
+//
+//
+
+/**
  * @brief Gets the backend type of the bread build.
  *
  * @details Which can be either @ref BREAD_BACKEND_WAYLAND or @ref
