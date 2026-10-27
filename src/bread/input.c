@@ -244,12 +244,11 @@ void bread_window_text_input_enable(bread_window_t *window, f32 x, f32 y, f32 w,
   if (!window || !window->backend)
     return;
 #if BREAD_WAYLAND
-  bread_wayland_text_input_enable(window->backend, x, y, w, h);
+  wl_state_t *state = window->backend;
+  bread_wayland_text_input_enable(state, x, y, w, h);
 #elif BREAD_X11
-  (void)x;
-  (void)y;
-  (void)w;
-  (void)h;
+  x11_state_t *state = window->backend;
+  bread_x11_text_input_enable(state, x, y, w, h);
 #endif
 }
 
@@ -257,7 +256,11 @@ void bread_window_text_input_disable(bread_window_t *window) {
   if (!window || !window->backend)
     return;
 #if BREAD_WAYLAND
-  bread_wayland_text_input_disable(window->backend);
+  wl_state_t *state = window->backend;
+  bread_wayland_text_input_disable(state);
+#elif BREAD_X11
+  x11_state_t *state = window->backend;
+  bread_x11_text_input_disable(state);
 #endif
 }
 

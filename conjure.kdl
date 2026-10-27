@@ -52,7 +52,7 @@ project {
       artifact "bread-x11-debug"
 
       c_flags -DBREAD_DEBUG -DBREAD_X11 -ggdb -g -Og "-fsanitize=address,undefined,leak" "-fno-sanitize-recover=all" -fno-omit-frame-pointer -fno-optimize-sibling-calls -fsanitize-address-use-after-scope -fno-common -static-libasan -Wall -Wextra -Wpedantic -Wno-unused-parameter
-      ld_flags -lxkbcommon -lxkbcommon-x11 -lxcb -lxcb-icccm -lxcb-cursor -lxcb-randr -lhtils-threadsafe "-fsanitize=address,undefined,leak" "-fno-sanitize-recover=all" -fno-omit-frame-pointer -fno-optimize-sibling-calls -fsanitize-address-use-after-scope -fno-common -static-libasan -Wall -Wextra -Wpedantic -Wno-unused-parameter -static-libasan
+      ld_flags -lxkbcommon -lxkbcommon-x11 -lxcb -lxcb-icccm -lxcb-cursor -lxcb-randr -lxcb-imdkit -lhtils-threadsafe "-fsanitize=address,undefined,leak" "-fno-sanitize-recover=all" -fno-omit-frame-pointer -fno-optimize-sibling-calls -fsanitize-address-use-after-scope -fno-common -static-libasan -Wall -Wextra -Wpedantic -Wno-unused-parameter -static-libasan
 
       tests {
         main {
@@ -70,7 +70,7 @@ project {
       link dynamic
 
       c_flags -DBREAD_X11 -O2
-      ld_flags -lxkbcommon -lxkbcommon-x11 -lxcb -lxcb-icccm -lxcb-cursor -lxcb-randr -lhtils-threadsafe
+      ld_flags -lxkbcommon -lxkbcommon-x11 -lxcb -lxcb-icccm -lxcb-cursor -lxcb-randr -lxcb-imdkit -lhtils-threadsafe
     }
 
     x11-release-static {

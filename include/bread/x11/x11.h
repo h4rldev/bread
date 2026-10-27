@@ -7,6 +7,7 @@
 /*************************************************/
 
 #include <htils/basictypes.h>
+#include <xcb-imdkit/imclient.h>
 #include <xcb/xcb.h>
 #include <xcb/xcb_cursor.h>
 #include <xkbcommon/xkbcommon.h>
@@ -58,10 +59,17 @@ typedef struct {
   xcb_atom_t utf8_atom;      /**< Cached UTF8_STRING atom. */
   xcb_atom_t targets_atom;   /**< Cached TARGETS atom. */
   xcb_atom_t prop_atom; /**< Scratch property atom for clipboard transfer. */
+
   char *clipboard;      /**< Owned copy of the published selection. */
   u32 clipboard_len;    /**< Length of clipboard in bytes. */
   b32 owns_clipboard;   /**< True while we own the CLIPBOARD selection. */
   char *clipboard_read; /**< Owned buffer for text read from an owner. */
+
+  i32 screen_number;      /**< Screen number passed to xcb_connect. */
+  xcb_xim_t *xim;         /**< XIM client, or null when unavailable. */
+  xcb_xic_t xim_ic;       /**< XIM input context, or 0 before creation. */
+  b32 text_input_enabled; /**< Whether text input is currently enabled. */
+  cstr *text_commit;      /**< Owned NULL-terminated commit buffer. */
 } x11_state_t;
 
 #endif // !BREAD_X11

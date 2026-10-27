@@ -38,6 +38,7 @@
         libxcb-cursor
         libxcb-wm
         libxkbcommon
+        xcb-imdkit
       ];
 
       waylandCodegen = ''
@@ -160,6 +161,7 @@
           libxcb
           libxcb-wm
           libxkbcommon
+          xcb-imdkit
           wayland
           wayland-protocols
           htils.packages.${system}.htils-threadsafe
@@ -184,8 +186,8 @@
           mkdir -p include/wayland
           mkdir -p src/wayland
 
-          export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:${pkgs.gcc.cc.lib}/lib:${pkgs.libxcb}/lib:${pkgs.libxcb-wm}/lib:${pkgs.libxcb-cursor}/lib"
-          export NIX_LDFLAGS="-rpath ${htils.packages.${system}.htils-threadsafe}/lib -rpath ${pkgs.libxcb}/lib -rpath ${pkgs.libxcb-wm}/lib  $NIX_LDFLAGS"
+          export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:${pkgs.gcc.cc.lib}/lib:${pkgs.libxcb}/lib:${pkgs.libxcb-wm}/lib:${pkgs.libxcb-cursor}/lib:${pkgs.xcb-imdkit}/lib"
+          export NIX_LDFLAGS="-rpath ${htils.packages.${system}.htils-threadsafe}/lib -rpath ${pkgs.libxcb}/lib -rpath ${pkgs.libxcb-wm}/lib -rpath ${pkgs.xcb-imdkit}/lib  $NIX_LDFLAGS"
 
           [[ -f ./include/wayland/xdg-shell-client-protocol.h ]] || wayland-scanner client-header ${pkgs.wayland-protocols}/share/wayland-protocols/stable/xdg-shell/xdg-shell.xml ./include/wayland/xdg-shell-client-protocol.h
           [[ -f ./src/wayland/xdg-shell-client-protocol.c ]] || wayland-scanner private-code ${pkgs.wayland-protocols}/share/wayland-protocols/stable/xdg-shell/xdg-shell.xml ./src/wayland/xdg-shell-client-protocol.c

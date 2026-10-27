@@ -71,6 +71,7 @@ static void x11_state_cleanup(x11_state_t *state) {
   bread_log_debug("Cleaning up x11 state");
 
   bread_x11_clipboard_cleanup(state);
+  bread_x11_ime_cleanup(state);
 
   if (state->xcb_window) {
     bread_log_debug("Destroying window");
@@ -145,6 +146,10 @@ static void x11_init(bread_window_t *window) {
   int screen_num = 0;
   bread_log_debug("Connecting to X server");
   state->connection = xcb_connect(null, &screen_num);
+  state->screen_number = screen_num;
+  state->xim = null;
+  state->xim_ic = 0;
+
   int has_error = xcb_connection_has_error(state->connection);
   if (has_error) {
     bread_log_error("Failed to connect to X server: %d", has_error);
@@ -215,7 +220,8 @@ static void x11_init(bread_window_t *window) {
       XCB_EVENT_MASK_EXPOSURE | XCB_EVENT_MASK_STRUCTURE_NOTIFY |
           XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_KEY_PRESS |
           XCB_EVENT_MASK_KEY_RELEASE | XCB_EVENT_MASK_BUTTON_PRESS |
-          XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_POINTER_MOTION};
+          XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_POINTER_MOTION |
+          XCB_EVENT_MASK_FOCUS_CHANGE};
 
   xcb_create_window(state->connection, XCB_COPY_FROM_PARENT, state->xcb_window,
                     state->screen->root, 0, 0, device_width, device_height, 0,
@@ -255,6 +261,9 @@ static void x11_init(bread_window_t *window) {
   bread_log_debug("Reapplying mask");
   xcb_change_window_attributes(state->connection, state->xcb_window, value_mask,
                                value_list);
+
+  if (!bread_x11_ime_init(state))
+    bread_log_error("XIM unavailable");
 
   if (window->min_width > 0 && window->min_height > 0) {
     xcb_size_hints_t hints = {
@@ -316,6 +325,11 @@ static void x11_poll_events(bread_window_t *window) {
           "sequence=%u, resource_id=%u, major_code=%u, minor_code=%u",
           error->response_type, error->error_code, error->sequence,
           error->resource_id, error->major_code, error->minor_code);
+      free(event);
+      continue;
+    }
+
+    if (bread_x11_ime_filter(state, event)) {
       free(event);
       continue;
     }
@@ -448,6 +462,14 @@ static void x11_poll_events(bread_window_t *window) {
 
     case XCB_SELECTION_CLEAR:
       bread_x11_clipboard_clear(state, (xcb_selection_clear_event_t *)event);
+      break;
+
+    case XCB_FOCUS_IN:
+      bread_x11_ime_focus(state, true);
+      break;
+
+    case XCB_FOCUS_OUT:
+      bread_x11_ime_focus(state, false);
       break;
 
     default:

@@ -178,5 +178,107 @@ void bread_x11_cursor_cleanup(x11_state_t *state);
  */
 void bread_x11_set_cursor(x11_state_t *state, bread_cursor_type_t cursor);
 
+//
+//
+//
+
+/**
+ * @brief Initializes the X11 input method.
+ *
+ * @details Creates and opens the XIM client. The input context is created
+ * asynchronously by xim_open_callback.
+ *
+ * @param state The x11 state to initialize.
+ *
+ * @return true on success, false when no IM is available.
+ *
+ * @pre @c state must be valid and connected.
+ */
+b32 bread_x11_ime_init(x11_state_t *state);
+
+//
+//
+//
+
+/**
+ * @brief Filters an X event through the IM.
+ *
+ * @details Must run before normal dispatch. Returns true when the IM consumed
+ * the event. Otherwise forwards key events to the input context.
+ *
+ * @param state The x11 state.
+ * @param event The event to filter.
+ *
+ * @return true when the event was consumed by the IM.
+ *
+ * @pre @c state and @c event must be valid.
+ */
+b32 bread_x11_ime_filter(x11_state_t *state, xcb_generic_event_t *event);
+
+//
+//
+//
+
+/**
+ * @brief Applies window focus to the IM.
+ *
+ * @param state The x11 state.
+ * @param focused Whether the window gained focus.
+ *
+ * @pre @c state must be valid.
+ */
+void bread_x11_ime_focus(x11_state_t *state, b32 focused);
+
+//
+//
+//
+
+/**
+ * @brief Cleans up the X11 input method.
+ *
+ * @details Destroys the input context, closes and destroys the XIM client, and
+ * frees the commit buffer. Safe to call when the IM was never created.
+ *
+ * @param state The x11 state to clean up.
+ *
+ * @pre @c state must be valid.
+ */
+void bread_x11_ime_cleanup(x11_state_t *state);
+
+//
+//
+//
+
+/**
+ * @brief Enables X11 text input.
+ *
+ * @details Focuses the input context and moves the IM spot to the caret.
+ *
+ * @param state The x11 state.
+ * @param x The caret x in logical coordinates.
+ * @param y The caret y in logical coordinates.
+ * @param w Unused caret width.
+ * @param h Unused caret height.
+ *
+ * @pre @c state must be valid.
+ */
+void bread_x11_text_input_enable(x11_state_t *state, f32 x, f32 y, f32 w,
+                                 f32 h);
+
+//
+//
+//
+
+/**
+ * @brief Disables X11 text input.
+ *
+ * @details Unfocuses the input context. Safe to call when it was never enabled.
+ *
+ * @param state The x11 state.
+ *
+ * @pre @c state must be valid.
+ */
+void bread_x11_text_input_disable(x11_state_t *state);
+
 #endif // !BREAD_X11
 #endif // !BREAD_X11_INPUT_H

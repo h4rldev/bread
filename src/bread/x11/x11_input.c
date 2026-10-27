@@ -4,6 +4,10 @@
 
 #if BREAD_X11
 
+#include <stdlib.h>
+#include <string.h>
+
+#include <xcb-imdkit/imclient.h>
 #include <xcb/xcb_cursor.h>
 #include <xcb/xkb.h>
 #include <xkbcommon/xkbcommon-x11.h>
@@ -17,6 +21,169 @@
 #include <bread/x11/x11.h>
 
 /*************************************************/
+
+/**
+ * @brief Handles a key the IM forwarded back to the client.
+ *
+ * @details The IM has already processed the key; nothing to do.
+ *
+ * @param im The XIM client.
+ * @param ic The input context.
+ * @param event The key event.
+ * @param user_data The x11_state_t.
+ *
+ * @pre All parameters must be valid.
+ */
+static void xim_forward_event(xcb_xim_t *im, xcb_xic_t ic,
+                              xcb_key_press_event_t *event, void *user_data) {
+  (void)im;
+  (void)ic;
+  (void)event;
+  (void)user_data;
+}
+
+//
+//
+//
+
+/**
+ * @brief Handles committed IME text.
+ *
+ * @details Copies the UTF-8 commit string into the state and fires
+ * BREAD_EVENT_TEXT_COMMIT. The event text is valid during the callback.
+ *
+ * @param im The XIM client.
+ * @param ic The input context.
+ * @param flag The commit flag.
+ * @param str The committed text.
+ * @param length The text length in bytes.
+ * @param keysym Unused keysyms.
+ * @param n_keysym Number of keysyms.
+ * @param user_data The x11_state_t.
+ *
+ * @pre All parameters must be valid.
+ */
+static void xim_commit_string(xcb_xim_t *im, xcb_xic_t ic, u32 flag, char *str,
+                              u32 length, u32 *keysym, size_t n_keysym,
+                              void *user_data) {
+  (void)ic;
+  (void)flag;
+  (void)keysym;
+  (void)n_keysym;
+
+  x11_state_t *state = user_data;
+  if (!state || !state->window || !str || length == 0)
+    return;
+  if (xcb_xim_get_encoding(im) != XCB_XIM_UTF8_STRING)
+    return;
+
+  free(state->text_commit);
+  state->text_commit = malloc((size_t)length + 1);
+  if (!state->text_commit)
+    return;
+
+  memcpy(state->text_commit, str, length);
+  state->text_commit[length] = '\0';
+
+  bread_event_t ev = {0};
+  ev.type = BREAD_EVENT_TEXT_COMMIT;
+  ev.data.text_commit.text = state->text_commit;
+  bread_fire_event(state->window, &ev);
+}
+
+//
+//
+//
+
+/**
+ * @brief Handles the IM disconnecting.
+ *
+ * @param im The XIM client.
+ * @param user_data The x11_state_t.
+ *
+ * @pre All parameters must be valid.
+ */
+static void xim_disconnected(xcb_xim_t *im, void *user_data) {
+  (void)im;
+  x11_state_t *state = user_data;
+  if (state)
+    state->xim_ic = 0;
+}
+
+//
+//
+//
+
+/**
+ * @brief Stores the created input context and focuses it if enabled.
+ *
+ * @param im The XIM client.
+ * @param ic The new input context, or 0 on failure.
+ * @param user_data The x11_state_t.
+ *
+ * @pre All parameters must be valid.
+ */
+static void xim_create_ic_callback(xcb_xim_t *im, xcb_xic_t ic,
+                                   void *user_data) {
+  x11_state_t *state = user_data;
+  if (!state)
+    return;
+
+  state->xim_ic = ic;
+  if (ic && state->text_input_enabled)
+    xcb_xim_set_ic_focus(im, ic);
+}
+
+//
+//
+//
+
+/**
+ * @brief Creates the input context once the IM is open.
+ *
+ * @details Uses PreeditPosition | StatusArea so the IM draws its own pre-edit
+ * and status window at the spot location; the client only receives commits.
+ *
+ * @param im The XIM client.
+ * @param user_data The x11_state_t.
+ *
+ * @pre All parameters must be valid.
+ */
+static void xim_open_callback(xcb_xim_t *im, void *user_data) {
+  x11_state_t *state = user_data;
+  if (!state)
+    return;
+
+  u32 input_style = XCB_IM_PreeditPosition | XCB_IM_StatusArea;
+  xcb_point_t spot = {0, 0};
+  xcb_xim_nested_list nested =
+      xcb_xim_create_nested_list(im, XCB_XIM_XNSpotLocation, &spot, null);
+
+  xcb_xim_create_ic(im, xim_create_ic_callback, state, XCB_XIM_XNInputStyle,
+                    &input_style, XCB_XIM_XNClientWindow, &state->xcb_window,
+                    XCB_XIM_XNFocusWindow, &state->xcb_window,
+                    XCB_XIM_XNPreeditAttributes, &nested, null);
+  free(nested.data);
+}
+
+//
+//
+//
+
+/**
+ * @brief The XIM client callbacks.
+ *
+ * @details Handles commits, forwarded keys, and IM disconnection.
+ */
+static const xcb_xim_im_callback xim_callbacks = {
+    .forward_event = xim_forward_event,
+    .commit_string = xim_commit_string,
+    .disconnected = xim_disconnected,
+};
+
+//
+//
+//
 
 b32 bread_x11_xkb_init(x11_state_t *state) {
   bread_log_debug("Initializing X11 xkb");
@@ -277,6 +444,94 @@ void bread_x11_set_cursor(x11_state_t *state, bread_cursor_type_t cursor) {
                                XCB_CW_CURSOR, values);
   xcb_flush(state->connection);
   state->current_cursor = new_cursor;
+}
+
+b32 bread_x11_ime_init(x11_state_t *state) {
+  if (!state || !state->connection)
+    return false;
+
+  state->xim = xcb_xim_create(state->connection, state->screen_number, null);
+  if (!state->xim) {
+    bread_log_error("Failed to create XIM");
+    return false;
+  }
+
+  xcb_xim_set_im_callback(state->xim, &xim_callbacks, state);
+  xcb_xim_set_use_utf8_string(state->xim, true);
+
+  if (!xcb_xim_open(state->xim, xim_open_callback, true, state)) {
+    bread_log_error("Failed to open XIM");
+    xcb_xim_destroy(state->xim);
+    state->xim = null;
+    return false;
+  }
+
+  return true;
+}
+
+b32 bread_x11_ime_filter(x11_state_t *state, xcb_generic_event_t *event) {
+  if (!state || !state->xim || !event)
+    return false;
+
+  if (xcb_xim_filter_event(state->xim, event))
+    return true;
+
+  u8 type = event->response_type & ~0x80;
+  if (state->xim_ic && (type == XCB_KEY_PRESS || type == XCB_KEY_RELEASE))
+    xcb_xim_forward_event(state->xim, state->xim_ic,
+                          (xcb_key_press_event_t *)event);
+  return false;
+}
+
+void bread_x11_ime_focus(x11_state_t *state, b32 focused) {
+  if (!state || !state->xim || !state->xim_ic)
+    return;
+
+  if (focused && state->text_input_enabled)
+    xcb_xim_set_ic_focus(state->xim, state->xim_ic);
+  else
+    xcb_xim_unset_ic_focus(state->xim, state->xim_ic);
+}
+
+void bread_x11_ime_cleanup(x11_state_t *state) {
+  if (!state)
+    return;
+
+  if (state->xim) {
+    if (state->xim_ic)
+      xcb_xim_destroy_ic(state->xim, state->xim_ic, null, null);
+    xcb_xim_close(state->xim);
+    xcb_xim_destroy(state->xim);
+    state->xim = null;
+    state->xim_ic = 0;
+  }
+
+  free(state->text_commit);
+  state->text_commit = null;
+}
+
+void bread_x11_text_input_enable(x11_state_t *state, f32 x, f32 y, f32 w,
+                                 f32 h) {
+  (void)w;
+  (void)h;
+  if (!state)
+    return;
+
+  state->text_input_enabled = true;
+  if (!state->xim || !state->xim_ic)
+    return;
+
+  xcb_xim_set_ic_focus(state->xim, state->xim_ic);
+  xcb_xim_ext_move(state->xim, state->xim_ic, (i16)x, (i16)y);
+}
+
+void bread_x11_text_input_disable(x11_state_t *state) {
+  if (!state)
+    return;
+
+  state->text_input_enabled = false;
+  if (state->xim && state->xim_ic)
+    xcb_xim_unset_ic_focus(state->xim, state->xim_ic);
 }
 
 #endif // !BREAD_X11
