@@ -701,7 +701,7 @@ static void text_input_preedit_string(void *data,
   bread_event_t event = {0};
   event.type = BREAD_EVENT_TEXT_PREEDIT;
   event.data.text_preedit.text = text ? text : "";
-  event.data.text_preedit.cursor = cursor_begin > 0 ? (u32)cursor_begin : 0;
+  event.data.text_preedit.cursor = cursor_end >= 0 ? (u32)cursor_end : 0;
   bread_fire_event(state->window, &event);
 }
 
