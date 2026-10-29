@@ -286,7 +286,9 @@ typedef struct {
     } mouse_scroll;
     struct {
       const cstr *text; /**< Valid only during the callback. */
-      u32 cursor;       /**< IME cursor byte offset inside text. */
+      u32 cursor_begin; /**< Selection start byte offset inside text. */
+      u32 cursor_end;   /**< Selection end byte offset inside text; equals
+                             cursor_begin for a plain caret. */
     } text_preedit;
     struct {
       const cstr *text; /**< Valid only during the callback. */

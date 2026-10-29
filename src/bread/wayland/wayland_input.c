@@ -671,7 +671,8 @@ static void text_input_leave(void *data, zwp_text_input_v3_t *text_input,
   bread_event_t event = {0};
   event.type = BREAD_EVENT_TEXT_PREEDIT;
   event.data.text_preedit.text = "";
-  event.data.text_preedit.cursor = 0;
+  event.data.text_preedit.cursor_begin = 0;
+  event.data.text_preedit.cursor_end = 0;
   bread_fire_event(state->window, &event);
 }
 
@@ -682,14 +683,15 @@ static void text_input_leave(void *data, zwp_text_input_v3_t *text_input,
 /**
  * @brief Handles the IME pre-edit string.
  *
- * @details Fires BREAD_EVENT_TEXT_PREEDIT with the string and cursor offset.
- * The string is only valid during the event callback.
+ * @details Fires BREAD_EVENT_TEXT_PREEDIT with the string and selection
+ * range. The string is only valid during the event callback.
  *
  * @param data The wl_state.
  * @param text_input The text input.
  * @param text The pre-edit string, or null.
- * @param cursor_begin The cursor offset in bytes.
- * @param cursor_end The selection end offset in bytes.
+ * @param cursor_begin The selection start offset in bytes.
+ * @param cursor_end The selection end offset in bytes; equals cursor_begin
+ * for a plain caret.
  *
  * @pre All parameters must be valid.
  */
@@ -700,8 +702,12 @@ static void text_input_preedit_string(void *data,
   wl_state_t *state = data;
   bread_event_t event = {0};
   event.type = BREAD_EVENT_TEXT_PREEDIT;
+  u32 begin = cursor_begin >= 0 ? (u32)cursor_begin : 0;
+  u32 end = cursor_end >= 0 ? (u32)cursor_end : begin;
+
   event.data.text_preedit.text = text ? text : "";
-  event.data.text_preedit.cursor = cursor_end >= 0 ? (u32)cursor_end : 0;
+  event.data.text_preedit.cursor_begin = begin;
+  event.data.text_preedit.cursor_end = end;
   bread_fire_event(state->window, &event);
 }
 
