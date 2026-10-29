@@ -226,11 +226,12 @@ f32 bread_window_get_scale(bread_window_t *window);
 /**
  * @brief Enables text input for the window.
  *
- * @details Enables the compositor's text input and anchors its candidate
- * window at the given rectangle, in logical window coordinates. Call this each
- * frame while a text field is focused, and @ref bread_window_text_input_disable
- * when it loses focus. Wayland only; the X11 backend ignores the rectangle and
- * does nothing.
+ * @details Enables text input for the window and anchors the IME candidate
+ * window at the caret rectangle. Call while a text field is focused (when the
+ * rectangle changes or input is first enabled). On Wayland the rectangle is
+ * retained and re-applied when the surface regains focus. On X11 this sets the
+ * XIM input-context focus and moves the preedit window to (x, y); width and
+ * height are unused.
  *
  * @param window The window to enable text input for.
  * @param x The caret rectangle x, in logical coordinates.
@@ -253,8 +254,9 @@ void bread_window_text_input_enable(bread_window_t *window, f32 x, f32 y, f32 w,
 /**
  * @brief Disables text input for the window.
  *
- * @details Disables the compositor's text input. Safe to call when it was never
- * enabled. Wayland only; the X11 backend does nothing.
+ * @details Disables text input and clears the retained caret rectangle and
+ * surrounding text. On Wayland this disables the seat's text input; on X11 it
+ * unsets the XIM input-context focus..
  *
  * @param window The window to disable text input for.
  *
@@ -275,8 +277,9 @@ void bread_window_text_input_disable(bread_window_t *window);
  * @details Sends the editing buffer, excluding any preedit text, together
  * with the caret and selection anchor as byte offsets. Call this while text
  * input is enabled and whenever the buffer, caret, or selection changes,
- * including after applying an IME commit or delete. Wayland only; the X11
- * backend has no equivalent and does nothing.
+ * including after applying an IME commit or delete. The text is retained and
+ * re-sent when the surface regains focus. Wayland only; the X11 backend has no
+ * equivalent and does nothing.
  *
  * @param window The window to report surrounding text for.
  * @param text The editing buffer, excluding preedit, in UTF-8.

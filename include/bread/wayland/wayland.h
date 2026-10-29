@@ -103,6 +103,17 @@ typedef struct {
   zwp_text_input_v3_t *text_input;                 /**< Seat text input. */
   b32 text_input_enabled; /**< Whether text input is enabled. */
 
+  f32 text_input_x;        /**< Last caret rect x (logical px). */
+  f32 text_input_y;        /**< Last caret rect y. */
+  f32 text_input_w;        /**< Last caret rect width. */
+  f32 text_input_h;        /**< Last caret rect height. */
+  b32 text_input_rect_set; /**< Whether the caret rect is valid. */
+
+  cstr text_input_surrounding[4001]; /**< Last surrounding text (UTF-8). */
+  u32 text_input_cursor;             /**< Last caret byte offset. */
+  u32 text_input_anchor;             /**< Last anchor byte offset. */
+  b32 text_input_surrounding_set;    /**< Whether surrounding text is valid. */
+
   xdg_surface_t *xdg_surface;   /**< The xdg_surface role object. */
   xdg_toplevel_t *xdg_toplevel; /**< The xdg_toplevel role object. */
   xdg_wm_base_t *xdg_wm_base;   /**< The xdg_wm_base shell. */

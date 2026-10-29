@@ -611,21 +611,35 @@ static const wl_seat_listener_t seat_listener = {
 //
 
 /**
- * @brief Handles the text input enter event.
+ * @brief Restores the text-input state when the surface regains focus.
  *
- * @details No-op; the compositor routes events to the focused surface.
+ * @details The compositor invalidates the enable, cursor-rectangle, and
+ * surrounding-text state on every enter and leave. When text input is enabled,
+ * this re-sends the enable request, the retained caret rectangle, and the
+ * retained surrounding text, then commits them so the IME stays active after a
+ * focus change.
  *
  * @param data The wl_state.
  * @param text_input The text input.
- * @param surface The entered surface.
- *
- * @pre All parameters must be valid.
+ * @param surface The surface that gained focus.
  */
 static void text_input_enter(void *data, zwp_text_input_v3_t *text_input,
                              wl_surface_t *surface) {
-  (void)data;
-  (void)text_input;
   (void)surface;
+  wl_state_t *state = data;
+  if (!state || !text_input || !state->text_input_enabled)
+    return;
+
+  zwp_text_input_v3_enable(text_input);
+  if (state->text_input_rect_set)
+    zwp_text_input_v3_set_cursor_rectangle(
+        text_input, (i32)state->text_input_x, (i32)state->text_input_y,
+        (i32)state->text_input_w, (i32)state->text_input_h);
+  if (state->text_input_surrounding_set)
+    zwp_text_input_v3_set_surrounding_text(
+        text_input, state->text_input_surrounding,
+        (i32)state->text_input_cursor, (i32)state->text_input_anchor);
+  zwp_text_input_v3_commit(text_input);
 }
 
 //
@@ -635,7 +649,8 @@ static void text_input_enter(void *data, zwp_text_input_v3_t *text_input,
 /**
  * @brief Handles the text input leave event.
  *
- * @details No-op; the compositor clears the focus itself.
+ * @details No-op: the compositor invalidates the text-input state on leave;
+ * the next enter restores it from the retained state.
  *
  * @param data The wl_state.
  * @param text_input The text input.
@@ -843,6 +858,12 @@ void bread_wayland_text_input_enable(wl_state_t *state, f32 x, f32 y, f32 w,
   if (!state || !state->text_input_manager || !state->seat)
     return;
 
+  state->text_input_x = x;
+  state->text_input_y = y;
+  state->text_input_w = w > 0 ? w : 1;
+  state->text_input_h = h > 0 ? h : 1;
+  state->text_input_rect_set = true;
+
   if (!state->text_input) {
     state->text_input = zwp_text_input_manager_v3_get_text_input(
         state->text_input_manager, state->seat);
@@ -857,9 +878,9 @@ void bread_wayland_text_input_enable(wl_state_t *state, f32 x, f32 y, f32 w,
     state->text_input_enabled = true;
   }
 
-  zwp_text_input_v3_set_cursor_rectangle(state->text_input, (i32)x, (i32)y,
-                                         (i32)(w > 0 ? w : 1),
-                                         (i32)(h > 0 ? h : 1));
+  zwp_text_input_v3_set_cursor_rectangle(
+      state->text_input, (i32)state->text_input_x, (i32)state->text_input_y,
+      (i32)state->text_input_w, (i32)state->text_input_h);
   zwp_text_input_v3_commit(state->text_input);
 }
 
@@ -869,6 +890,8 @@ void bread_wayland_text_input_disable(wl_state_t *state) {
   zwp_text_input_v3_disable(state->text_input);
   zwp_text_input_v3_commit(state->text_input);
   state->text_input_enabled = false;
+  state->text_input_rect_set = false;
+  state->text_input_surrounding_set = false;
 }
 
 void bread_wayland_text_input_set_surrounding(wl_state_t *state,
@@ -893,6 +916,11 @@ void bread_wayland_text_input_set_surrounding(wl_state_t *state,
     cursor = len;
   if (anchor > len)
     anchor = len;
+
+  memcpy(state->text_input_surrounding, buf, (size_t)len + 1);
+  state->text_input_cursor = cursor;
+  state->text_input_anchor = anchor;
+  state->text_input_surrounding_set = true;
 
   zwp_text_input_v3_set_surrounding_text(state->text_input, buf, (i32)cursor,
                                          (i32)anchor);

@@ -80,6 +80,9 @@ void bread_wayland_seat_cleanup(wl_state_t *state);
  *
  * @details Lazily creates the seat's text input, enables it, anchors the IME
  * candidate window at the given rectangle, and commits the state.
+ * Lazily creates the seat's text input, enables it, retains the caret
+ * rectangle for the focus-enter restore, anchors the IME candidate window at
+ * the given rectangle, and commits the state.
  *
  * @note For internal use, no real reason to use this when using the library.
  *
@@ -104,8 +107,8 @@ void bread_wayland_text_input_enable(wl_state_t *state, f32 x, f32 y, f32 w,
 /**
  * @brief Disables Wayland text input.
  *
- * @details Disables the seat's text input if it was enabled. Safe to call when
- * it was never enabled.
+ * @details Disables the seat's text input and clears the retained caret
+ * rectangle and surrounding text.
  *
  * @note For internal use, no real reason to use this when using the library.
  *
