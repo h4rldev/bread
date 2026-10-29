@@ -649,8 +649,10 @@ static void text_input_enter(void *data, zwp_text_input_v3_t *text_input,
 /**
  * @brief Handles the text input leave event.
  *
- * @details No-op: the compositor invalidates the text-input state on leave;
- * the next enter restores it from the retained state.
+ * @details The compositor invalidates the text-input state on leave. Fires an
+ * empty @ref BREAD_EVENT_TEXT_PREEDIT so the app drops the stale client
+ * preedit; the next enter restores the text-input state from the retained
+ * values.
  *
  * @param data The wl_state.
  * @param text_input The text input.
@@ -660,9 +662,17 @@ static void text_input_enter(void *data, zwp_text_input_v3_t *text_input,
  */
 static void text_input_leave(void *data, zwp_text_input_v3_t *text_input,
                              wl_surface_t *surface) {
-  (void)data;
   (void)text_input;
   (void)surface;
+  wl_state_t *state = data;
+  if (!state || !state->window)
+    return;
+
+  bread_event_t event = {0};
+  event.type = BREAD_EVENT_TEXT_PREEDIT;
+  event.data.text_preedit.text = "";
+  event.data.text_preedit.cursor = 0;
+  bread_fire_event(state->window, &event);
 }
 
 //
