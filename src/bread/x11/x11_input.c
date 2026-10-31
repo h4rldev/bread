@@ -399,9 +399,12 @@ static void xim_request_ic(x11_state_t *state, u32 style);
  * @brief Checks whether the input context was granted pre-edit callbacks.
  *
  * @details The IM silently downgrades an unsupported style, so the granted
- * style is read back. When callbacks are missing the context is recreated with
- * the IM-drawn pre-edit style, which keeps the composition and the candidate
- * window working.
+ * style is read back. When callbacks are missing a second context is created
+ * with the IM-drawn pre-edit style, which keeps the composition and the
+ * candidate window working. The downgraded context is left to the IM: it is
+ * never focused, and issuing a second request here would sit in the client's
+ * queue forever because a request issued while another is in flight is only
+ * sent by the next call into the library.
  *
  * @param im The XIM client.
  * @param ic The input context.
@@ -432,9 +435,6 @@ static void xim_ic_values_callback(xcb_xim_t *im, xcb_xic_t ic,
     return;
   }
 
-  xcb_xim_destroy_ic(im, ic, null, null);
-  state->xim_ic = 0;
-  xim_preedit_reset(state);
   xim_request_ic(state, XCB_IM_PreeditPosition | XCB_IM_StatusArea);
 }
 
