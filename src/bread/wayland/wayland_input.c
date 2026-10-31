@@ -652,7 +652,7 @@ static void text_input_enter(void *data, zwp_text_input_v3_t *text_input,
  * @details The compositor invalidates the text-input state on leave. Fires an
  * empty @ref BREAD_EVENT_TEXT_PREEDIT so the app drops the stale client
  * preedit; the next enter restores the text-input state from the retained
- * values.
+ * values. Clears the per-batch pre-edit flag.
  *
  * @param data The wl_state.
  * @param text_input The text input.
@@ -664,9 +664,12 @@ static void text_input_leave(void *data, zwp_text_input_v3_t *text_input,
                              wl_surface_t *surface) {
   (void)text_input;
   (void)surface;
+
   wl_state_t *state = data;
   if (!state || !state->window)
     return;
+
+  state->text_input_preedit_seen = false;
 
   bread_event_t event = {0};
   event.type = BREAD_EVENT_TEXT_PREEDIT;
@@ -684,7 +687,9 @@ static void text_input_leave(void *data, zwp_text_input_v3_t *text_input,
  * @brief Handles the IME pre-edit string.
  *
  * @details Fires BREAD_EVENT_TEXT_PREEDIT with the string and selection
- * range. The string is only valid during the event callback.
+ * range. The string is only valid during the event callback. Marks the
+ * current state batch as carrying a pre-edit, so @ref text_input_done leaves
+ * it in place.
  *
  * @param data The wl_state.
  * @param text_input The text input.
@@ -702,6 +707,7 @@ static void text_input_preedit_string(void *data,
   wl_state_t *state = data;
   bread_event_t event = {0};
   event.type = BREAD_EVENT_TEXT_PREEDIT;
+  state->text_input_preedit_seen = true;
   u32 begin = cursor_begin >= 0 ? (u32)cursor_begin : 0;
   u32 end = cursor_end >= 0 ? (u32)cursor_end : begin;
 
@@ -772,7 +778,12 @@ static void text_input_delete_surrounding_text(void *data,
 /**
  * @brief Handles the text input done event.
  *
- * @details No-op; the client's state was already committed.
+ * @details A done closes the compositor's double-buffered state batch. When
+ * the batch carried no pre-edit string the pre-edit is empty: fcitx-style
+ * IMEs never send an empty pre-edit, so a composition erased down to nothing
+ * would otherwise stay displayed and keep suppressing key input. Fires an
+ * empty @ref BREAD_EVENT_TEXT_PREEDIT in that case, then resets the per-batch
+ * pre-edit flag.
  *
  * @param data The wl_state.
  * @param text_input The text input.
@@ -782,9 +793,23 @@ static void text_input_delete_surrounding_text(void *data,
  */
 static void text_input_done(void *data, zwp_text_input_v3_t *text_input,
                             u32 serial) {
-  (void)data;
   (void)text_input;
   (void)serial;
+
+  wl_state_t *state = data;
+  if (!state || !state->window)
+    return;
+
+  if (!state->text_input_preedit_seen) {
+    bread_event_t event = {0};
+    event.type = BREAD_EVENT_TEXT_PREEDIT;
+    event.data.text_preedit.text = "";
+    event.data.text_preedit.cursor_begin = 0;
+    event.data.text_preedit.cursor_end = 0;
+    bread_fire_event(state->window, &event);
+  }
+
+  state->text_input_preedit_seen = false;
 }
 
 //

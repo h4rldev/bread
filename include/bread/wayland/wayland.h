@@ -113,6 +113,8 @@ typedef struct {
   u32 text_input_cursor;             /**< Last caret byte offset. */
   u32 text_input_anchor;             /**< Last anchor byte offset. */
   b32 text_input_surrounding_set;    /**< Whether surrounding text is valid. */
+  b32 text_input_preedit_seen; /**< The current state batch carried a pre-edit.
+                                */
 
   xdg_surface_t *xdg_surface;   /**< The xdg_surface role object. */
   xdg_toplevel_t *xdg_toplevel; /**< The xdg_toplevel role object. */
