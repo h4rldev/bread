@@ -25,7 +25,10 @@
 /**
  * @brief Handles a key the IM forwarded back to the client.
  *
- * @details The IM has already processed the key; nothing to do.
+ * @details Keys are handed to the IM with synchronous forwarding; the IM
+ * commits the ones it consumed and forwards the rest back here. Runs the same
+ * path as a normal key event (state update plus the key event), so the client
+ * sees each key exactly once.
  *
  * @param im The XIM client.
  * @param ic The input context.
@@ -38,8 +41,24 @@ static void xim_forward_event(xcb_xim_t *im, xcb_xic_t ic,
                               xcb_key_press_event_t *event, void *user_data) {
   (void)im;
   (void)ic;
-  (void)event;
-  (void)user_data;
+  x11_state_t *state = user_data;
+  if (!state || !state->window || !event)
+    return;
+
+  u8 type = event->response_type & ~0x80;
+  bread_event_t ev = {0};
+  if (type == XCB_KEY_PRESS) {
+    bread_x11_handle_key_press(state, event);
+    ev.type = BREAD_EVENT_KEY_PRESS;
+  } else if (type == XCB_KEY_RELEASE) {
+    bread_x11_handle_key_release(state, (xcb_key_release_event_t *)event);
+    ev.type = BREAD_EVENT_KEY_RELEASE;
+  } else {
+    return;
+  }
+  ev.data.key.key = bread_evdev_to_key(event->detail - 8);
+  ev.data.key.raw_keycode = event->detail;
+  bread_fire_event(state->window, &ev);
 }
 
 //
@@ -477,9 +496,12 @@ b32 bread_x11_ime_filter(x11_state_t *state, xcb_generic_event_t *event) {
     return true;
 
   u8 type = event->response_type & ~0x80;
-  if (state->xim_ic && (type == XCB_KEY_PRESS || type == XCB_KEY_RELEASE))
+  if (state->xim_ic && state->text_input_enabled &&
+      (type == XCB_KEY_PRESS || type == XCB_KEY_RELEASE)) {
     xcb_xim_forward_event(state->xim, state->xim_ic,
                           (xcb_key_press_event_t *)event);
+    return true;
+  }
   return false;
 }
 

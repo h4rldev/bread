@@ -204,7 +204,9 @@ b32 bread_x11_ime_init(x11_state_t *state);
  * @brief Filters an X event through the IM.
  *
  * @details Must run before normal dispatch. Returns true when the IM consumed
- * the event. Otherwise forwards key events to the input context.
+ * the event. While a text field is editing, key events are handed to the
+ * input context and consumed here; the IM forwards the keys it does not use
+ * back through the forward-event callback, which dispatches them normally.
  *
  * @param state The x11 state.
  * @param event The event to filter.
