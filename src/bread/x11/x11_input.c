@@ -69,7 +69,10 @@ static void xim_forward_event(xcb_xim_t *im, xcb_xic_t ic,
  * @brief Handles committed IME text.
  *
  * @details Copies the UTF-8 commit string into the state and fires
- * BREAD_EVENT_TEXT_COMMIT. The event text is valid during the callback.
+ * BREAD_EVENT_TEXT_COMMIT. The event text is valid during the callback. Only
+ * a XCB_XIM_UTF8_STRING negotiation is accepted; the client offers UTF-8
+ * alone, so a commit in any other encoding is ignored rather than decoded
+ * incorrectly.
  *
  * @param im The XIM client.
  * @param ic The input context.
@@ -476,6 +479,7 @@ b32 bread_x11_ime_init(x11_state_t *state) {
   }
 
   xcb_xim_set_im_callback(state->xim, &xim_callbacks, state);
+  xcb_xim_set_use_compound_text(state->xim, false);
   xcb_xim_set_use_utf8_string(state->xim, true);
 
   if (!xcb_xim_open(state->xim, xim_open_callback, true, state)) {
