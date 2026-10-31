@@ -70,6 +70,11 @@ typedef struct {
   xcb_xic_t xim_ic;       /**< XIM input context, or 0 before creation. */
   b32 text_input_enabled; /**< Whether text input is currently enabled. */
   cstr *text_commit;      /**< Owned NULL-terminated commit buffer. */
+
+  cstr *text_preedit;      /**< Owned NULL-terminated pre-edit buffer. */
+  u32 text_preedit_len;    /**< Pre-edit buffer length in bytes. */
+  u32 text_preedit_cursor; /**< Caret byte offset inside the pre-edit. */
+  b32 xim_style_checked;   /**< Whether the granted IC style was validated. */
 } x11_state_t;
 
 #endif // !BREAD_X11
