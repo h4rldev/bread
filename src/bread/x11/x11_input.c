@@ -173,9 +173,10 @@ static void xim_preedit_start(xcb_xim_t *im, xcb_xic_t ic, void *user_data) {
  *
  * @details XIM positions (caret, change start and length) are character
  * indices; the buffer is UTF-8, so they are converted to byte offsets. The
- * changed span is replaced in place, the caret is stored, and the highlighted
- * span is derived from the per-character feedback array. Bitmap pre-edits carry
- * no text and are ignored, as is a pre-edit in a non-UTF-8 encoding.
+ * changed span is replaced in place, the highlighted span is derived from the
+ * per-character feedback array, and the caret is stored. A caret reported at
+ * the start of the highlighted span is moved to its end, because XIM places the
+ * cursor at the start of the active conversion segment.
  *
  * @param im The XIM client.
  * @param ic The input context.
@@ -187,13 +188,19 @@ static void xim_preedit_start(xcb_xim_t *im, xcb_xic_t ic, void *user_data) {
 static void xim_preedit_draw(xcb_xim_t *im, xcb_xic_t ic,
                              xcb_im_preedit_draw_fr_t *frame, void *user_data) {
   (void)ic;
+
   x11_state_t *state = user_data;
   if (!state || !state->window || !frame)
     return;
+
   if (xcb_xim_get_encoding(im) != XCB_XIM_UTF8_STRING)
     return;
-  if (frame->status != XCB_IM_TextType)
+
+  if (frame->status != XCB_IM_TextType) {
+    if (!frame->preedit_string || frame->length_of_preedit_string == 0)
+      xim_preedit_reset(state);
     return;
+  }
 
   const cstr *old = state->text_preedit ? state->text_preedit : "";
   u32 old_len = state->text_preedit_len;
@@ -211,36 +218,46 @@ static void xim_preedit_draw(xcb_xim_t *im, xcb_xic_t ic,
   memcpy(buf, old, first);
   if (new_len)
     memcpy(buf + first, frame->preedit_string, new_len);
+
   memcpy(buf + first + new_len, old + last, old_len - last);
   buf[len] = '\0';
 
   free(state->text_preedit);
   state->text_preedit = buf;
   state->text_preedit_len = len;
-  state->text_preedit_cursor = xim_utf8_offset(buf, len, frame->caret);
 
-  u32 begin = state->text_preedit_cursor;
-  u32 end = begin;
+  u32 caret = frame->caret;
+  u32 begin = 0;
+  u32 end = 0;
   u32 run_first = 0;
   u32 run_last = 0;
   b32 in_run = false;
   for (u32 i = 0; frame->feedback_array.items && i < frame->feedback_array.size;
        i++) {
-    if (frame->feedback_array.items[i] & XCB_XIM_HIGHLIGHT) {
+    if (frame->feedback_array.items[i] &
+        (XCB_XIM_HIGHLIGHT | XCB_XIM_REVERSE)) {
       if (!in_run) {
         run_first = i;
         in_run = true;
       }
+
       run_last = i + 1;
-    } else if (in_run) {
+    } else if (in_run)
       break;
-    }
   }
+
   if (in_run) {
     begin = xim_utf8_offset(buf, len, frame->chg_first + run_first);
     end = xim_utf8_offset(buf, len, frame->chg_first + run_last);
+
+    if (caret == frame->chg_first + run_first)
+      caret = frame->chg_first + run_last;
+  } else {
+    begin = xim_utf8_offset(buf, len, caret);
+    end = begin;
   }
 
+  state->text_preedit_cursor = xim_utf8_offset(buf, len, caret);
   xim_preedit_fire(state, begin, end);
 }
 
@@ -266,9 +283,11 @@ static void xim_preedit_caret(xcb_xim_t *im, xcb_xic_t ic,
                               void *user_data) {
   (void)im;
   (void)ic;
+
   x11_state_t *state = user_data;
   if (!state || !state->window || !frame || !state->text_preedit)
     return;
+
   if (frame->direction != XIM_ABSOLUTE_POSITION)
     return;
 
@@ -297,6 +316,7 @@ static void xim_preedit_caret(xcb_xim_t *im, xcb_xic_t ic,
 static void xim_preedit_done(xcb_xim_t *im, xcb_xic_t ic, void *user_data) {
   (void)im;
   (void)ic;
+
   x11_state_t *state = user_data;
   if (state)
     xim_preedit_reset(state);
@@ -337,6 +357,7 @@ static void xim_commit_string(xcb_xim_t *im, xcb_xic_t ic, u32 flag, char *str,
   x11_state_t *state = user_data;
   if (!state || !state->window || !str || length == 0)
     return;
+
   if (xcb_xim_get_encoding(im) != XCB_XIM_UTF8_STRING)
     return;
 
@@ -368,6 +389,7 @@ static void xim_commit_string(xcb_xim_t *im, xcb_xic_t ic, u32 flag, char *str,
  */
 static void xim_disconnected(xcb_xim_t *im, void *user_data) {
   (void)im;
+
   x11_state_t *state = user_data;
   if (state)
     state->xim_ic = 0;
@@ -378,75 +400,7 @@ static void xim_disconnected(xcb_xim_t *im, void *user_data) {
 //
 
 /**
- * @brief Requests an input context with the given style.
- *
- * @details The spot location starts at the origin and is moved by
- * @ref bread_x11_text_input_enable. The pre-edit attributes always carry a spot
- * location because the IM may draw the pre-edit when it refuses callbacks.
- *
- * @param state The x11_state_t.
- * @param style The XIM input style to request.
- *
- * @pre @p state holds an open XIM.
- */
-static void xim_request_ic(x11_state_t *state, u32 style);
-
-//
-//
-//
-
-/**
- * @brief Checks whether the input context was granted pre-edit callbacks.
- *
- * @details The IM silently downgrades an unsupported style, so the granted
- * style is read back. When callbacks are missing a second context is created
- * with the IM-drawn pre-edit style, which keeps the composition and the
- * candidate window working. The downgraded context is left to the IM: it is
- * never focused, and issuing a second request here would sit in the client's
- * queue forever because a request issued while another is in flight is only
- * sent by the next call into the library.
- *
- * @param im The XIM client.
- * @param ic The input context.
- * @param reply The granted values reply.
- * @param user_data The x11_state_t.
- *
- * @pre All parameters must be valid.
- */
-static void xim_ic_values_callback(xcb_xim_t *im, xcb_xic_t ic,
-                                   xcb_im_get_ic_values_reply_fr_t *reply,
-                                   void *user_data) {
-  x11_state_t *state = user_data;
-  if (!state || !reply || state->xim_style_checked)
-    return;
-
-  state->xim_style_checked = true;
-
-  u32 style = 0;
-  if (reply->ic_attribute.size > 0) {
-    xcb_im_xicattribute_fr_t *item = &reply->ic_attribute.items[0];
-    if (item->value && item->value_length >= sizeof style)
-      memcpy(&style, item->value, sizeof style);
-  }
-
-  if (style & XCB_IM_PreeditCallbacks) {
-    if (state->text_input_enabled)
-      xcb_xim_set_ic_focus(im, ic);
-    return;
-  }
-
-  xim_request_ic(state, XCB_IM_PreeditPosition | XCB_IM_StatusArea);
-}
-
-//
-//
-//
-
-/**
  * @brief Stores the created input context and focuses it if enabled.
- *
- * @details The first context's granted style is validated before it is used,
- * because the IM may have downgraded the requested style.
  *
  * @param im The XIM client.
  * @param ic The new input context, or 0 on failure.
@@ -461,16 +415,7 @@ static void xim_create_ic_callback(xcb_xim_t *im, xcb_xic_t ic,
     return;
 
   state->xim_ic = ic;
-  if (!ic)
-    return;
-
-  if (!state->xim_style_checked) {
-    xcb_xim_get_ic_values(im, ic, xim_ic_values_callback, state,
-                          XCB_XIM_XNInputStyle, null);
-    return;
-  }
-
-  if (state->text_input_enabled)
+  if (ic && state->text_input_enabled)
     xcb_xim_set_ic_focus(im, ic);
 }
 
@@ -510,8 +455,9 @@ static void xim_request_ic(x11_state_t *state, u32 style) {
  * @brief Creates the input context once the IM is open.
  *
  * @details Requests client-drawn pre-edit callbacks so the app renders the
- * composition inline, falling back to an IM-drawn pre-edit when the IM does not
- * grant the style.
+ * composition inline. An IM that does not offer them (fcitx only does with
+ * its XIM on-the-spot option) downgrades the style to an IM-drawn pre-edit,
+ * which still composes and commits correctly.
  *
  * @param im The XIM client.
  * @param user_data The x11_state_t.
@@ -523,7 +469,7 @@ static void xim_open_callback(xcb_xim_t *im, void *user_data) {
   if (!state)
     return;
 
-  xim_request_ic(state, XCB_IM_PreeditCallbacks | XCB_IM_StatusArea);
+  xim_request_ic(state, XCB_IM_PreeditCallbacks | XCB_IM_StatusNothing);
 }
 
 //
