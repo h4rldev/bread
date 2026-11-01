@@ -365,17 +365,18 @@ static void pointer_motion(void *data, wl_pointer_t *pointer, u32 time,
                            wl_fixed_t surface_x, wl_fixed_t surface_y) {
   bread_log_debug("Handling pointer motion");
   wl_state_t *state = data;
+
   state->input.mouse_x = wl_fixed_to_double(surface_x);
   state->input.mouse_y = wl_fixed_to_double(surface_y);
   bread_log_debug("Pointer moved to (%f, %f)", state->input.mouse_x,
                   state->input.mouse_y);
 
   bread_log_debug("Emitting mouse move");
-  bread_event_t event = {
-      .type = BREAD_EVENT_MOUSE_MOVE,
-  };
+  bread_event_t event = {0};
+  event.type = BREAD_EVENT_MOUSE_MOVE;
   event.data.mouse_move.x = state->input.mouse_x;
   event.data.mouse_move.y = state->input.mouse_y;
+
   bread_fire_event(state->window, &event);
 }
 
@@ -417,10 +418,10 @@ static void pointer_button(void *data, wl_pointer_t *pointer, u32 serial,
   state->input.mouse_buttons[bread_button] = pressed;
 
   bread_log_debug("Emitting mouse button press");
-  bread_event_t event = {
-      .type = pressed ? BREAD_EVENT_MOUSE_PRESS : BREAD_EVENT_MOUSE_RELEASE,
-  };
+  bread_event_t event = {0};
+  event.type = pressed ? BREAD_EVENT_MOUSE_PRESS : BREAD_EVENT_MOUSE_RELEASE;
   event.data.mouse_button.button = bread_button;
+
   bread_fire_event(state->window, &event);
 }
 
@@ -451,9 +452,8 @@ static void pointer_axis(void *data, wl_pointer_t *pointer, u32 time, u32 axis,
   wl_state_t *state = data;
   f64 dv = wl_fixed_to_double(value);
 
-  bread_event_t event = {
-      .type = BREAD_EVENT_MOUSE_SCROLL,
-  };
+  bread_event_t event = {0};
+  event.type = BREAD_EVENT_MOUSE_SCROLL;
 
   if (axis == WL_POINTER_AXIS_VERTICAL_SCROLL) {
     bread_log_debug("Scrolling vertically");
@@ -611,6 +611,26 @@ static const wl_seat_listener_t seat_listener = {
 //
 
 /**
+ * @brief Commits the pending text input state and counts the request.
+ *
+ * @details The compositor echoes the number of commit requests issued as the
+ * serial of the matching done event, so counting them is what lets a stale
+ * done be recognised.
+ *
+ * @param state The wl_state.
+ *
+ * @pre @p state holds a text input.
+ */
+static void text_input_commit(wl_state_t *state) {
+  state->text_input_commits++;
+  zwp_text_input_v3_commit(state->text_input);
+}
+
+//
+//
+//
+
+/**
  * @brief Restores the text-input state when the surface regains focus.
  *
  * @details The compositor invalidates the enable, cursor-rectangle, and
@@ -626,20 +646,28 @@ static const wl_seat_listener_t seat_listener = {
 static void text_input_enter(void *data, zwp_text_input_v3_t *text_input,
                              wl_surface_t *surface) {
   (void)surface;
+
   wl_state_t *state = data;
   if (!state || !text_input || !state->text_input_enabled)
     return;
 
   zwp_text_input_v3_enable(text_input);
+
+  if (state->text_input_content_type_set)
+    zwp_text_input_v3_set_content_type(text_input, state->text_input_hint,
+                                       state->text_input_purpose);
+
   if (state->text_input_rect_set)
     zwp_text_input_v3_set_cursor_rectangle(
         text_input, (i32)state->text_input_x, (i32)state->text_input_y,
         (i32)state->text_input_w, (i32)state->text_input_h);
+
   if (state->text_input_surrounding_set)
     zwp_text_input_v3_set_surrounding_text(
         text_input, state->text_input_surrounding,
         (i32)state->text_input_cursor, (i32)state->text_input_anchor);
-  zwp_text_input_v3_commit(text_input);
+
+  text_input_commit(state);
 }
 
 //
@@ -776,29 +804,30 @@ static void text_input_delete_surrounding_text(void *data,
 //
 
 /**
- * @brief Handles the text input done event.
+ * @brief Applies a text input state batch.
  *
- * @details A done closes the compositor's double-buffered state batch. When
- * the batch carried no pre-edit string the pre-edit is empty: fcitx-style
- * IMEs never send an empty pre-edit, so a composition erased down to nothing
- * would otherwise stay displayed and keep suppressing key input. Fires an
- * empty @ref BREAD_EVENT_TEXT_PREEDIT in that case, then resets the per-batch
- * pre-edit flag.
+ * @details A batch that carried no pre-edit string clears the client
+ * composition. The serial is the number of commit requests the compositor has
+ * processed. When it does not match the number sent, the compositor
+ * acknowledged a state that predates the latest commit; the protocol then
+ * requires the retained cursor rectangle and surrounding text to be sent and
+ * committed again, which is done once per stale serial.
  *
  * @param data The wl_state.
- * @param text_input The text input.
- * @param serial The compositor serial.
+ * @param text_input The text input object.
+ * @param serial The compositor's commit count for this batch.
  *
  * @pre All parameters must be valid.
  */
 static void text_input_done(void *data, zwp_text_input_v3_t *text_input,
                             u32 serial) {
   (void)text_input;
-  (void)serial;
 
   wl_state_t *state = data;
   if (!state || !state->window)
     return;
+
+  state->text_input_done_serial = serial;
 
   if (!state->text_input_preedit_seen) {
     bread_event_t event = {0};
@@ -810,6 +839,29 @@ static void text_input_done(void *data, zwp_text_input_v3_t *text_input,
   }
 
   state->text_input_preedit_seen = false;
+
+  if (serial == state->text_input_commits ||
+      state->text_input_resend_serial == serial)
+    return;
+
+  state->text_input_resend_serial = serial;
+
+  if (!state->text_input_enabled)
+    return;
+
+  if (state->text_input_content_type_set)
+    zwp_text_input_v3_set_content_type(
+        state->text_input, state->text_input_hint, state->text_input_purpose);
+
+  if (state->text_input_rect_set)
+    zwp_text_input_v3_set_cursor_rectangle(
+        state->text_input, (i32)state->text_input_x, (i32)state->text_input_y,
+        (i32)state->text_input_w, (i32)state->text_input_h);
+  if (state->text_input_surrounding_set)
+    zwp_text_input_v3_set_surrounding_text(
+        state->text_input, state->text_input_surrounding,
+        (i32)state->text_input_cursor, (i32)state->text_input_anchor);
+  text_input_commit(state);
 }
 
 //
@@ -917,22 +969,29 @@ void bread_wayland_text_input_enable(wl_state_t *state, f32 x, f32 y, f32 w,
   if (!state->text_input_enabled) {
     zwp_text_input_v3_enable(state->text_input);
     state->text_input_enabled = true;
+
+    if (state->text_input_content_type_set)
+      zwp_text_input_v3_set_content_type(
+          state->text_input, state->text_input_hint, state->text_input_purpose);
   }
 
   zwp_text_input_v3_set_cursor_rectangle(
       state->text_input, (i32)state->text_input_x, (i32)state->text_input_y,
       (i32)state->text_input_w, (i32)state->text_input_h);
-  zwp_text_input_v3_commit(state->text_input);
+  text_input_commit(state);
 }
 
 void bread_wayland_text_input_disable(wl_state_t *state) {
   if (!state || !state->text_input || !state->text_input_enabled)
     return;
   zwp_text_input_v3_disable(state->text_input);
-  zwp_text_input_v3_commit(state->text_input);
+  text_input_commit(state);
   state->text_input_enabled = false;
   state->text_input_rect_set = false;
   state->text_input_surrounding_set = false;
+  state->text_input_content_type_set = false;
+  state->text_input_purpose = 0;
+  state->text_input_hint = 0;
 }
 
 void bread_wayland_text_input_set_surrounding(wl_state_t *state,
@@ -965,7 +1024,27 @@ void bread_wayland_text_input_set_surrounding(wl_state_t *state,
 
   zwp_text_input_v3_set_surrounding_text(state->text_input, buf, (i32)cursor,
                                          (i32)anchor);
-  zwp_text_input_v3_commit(state->text_input);
+  text_input_commit(state);
+}
+
+void bread_wayland_text_input_set_content_type(wl_state_t *state, u32 purpose,
+                                               u32 hints) {
+  if (!state)
+    return;
+
+  if (state->text_input_content_type_set &&
+      state->text_input_purpose == purpose && state->text_input_hint == hints)
+    return;
+
+  state->text_input_purpose = purpose;
+  state->text_input_hint = hints;
+  state->text_input_content_type_set = true;
+
+  if (!state->text_input || !state->text_input_enabled)
+    return;
+
+  zwp_text_input_v3_set_content_type(state->text_input, hints, purpose);
+  text_input_commit(state);
 }
 
 void bread_wayland_cursor_init(wl_state_t *state) {

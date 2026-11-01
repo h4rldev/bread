@@ -113,8 +113,14 @@ typedef struct {
   u32 text_input_cursor;             /**< Last caret byte offset. */
   u32 text_input_anchor;             /**< Last anchor byte offset. */
   b32 text_input_surrounding_set;    /**< Whether surrounding text is valid. */
+  u32 text_input_purpose;            /**< Content purpose sent to the IM. */
+  u32 text_input_hint;             /**< Content hint bitmask sent to the IM. */
+  b32 text_input_content_type_set; /**< A content type has been set. */
   b32 text_input_preedit_seen; /**< The current state batch carried a pre-edit.
                                 */
+  u32 text_input_commits;
+  u32 text_input_done_serial;
+  u32 text_input_resend_serial;
 
   xdg_surface_t *xdg_surface;   /**< The xdg_surface role object. */
   xdg_toplevel_t *xdg_toplevel; /**< The xdg_toplevel role object. */

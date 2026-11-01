@@ -198,88 +198,7 @@ static u64 unicode_to_utf8(u32 cp, cstr *out) {
 //
 //
 
-bread_key_t bread_evdev_to_key(u32 evdev_key) {
-  if (evdev_key < EVDEV_TO_BREAD_MAX)
-    return evdev_to_bread[evdev_key];
-  return BREAD_KEY_UNKNOWN;
-}
-
-bread_mouse_button_t bread_evdev_to_mouse_button(u32 button) {
-  switch (button) {
-  case 0x110:
-    return BREAD_MOUSE_BUTTON_LEFT;
-  case 0x111:
-    return BREAD_MOUSE_BUTTON_RIGHT;
-  case 0x112:
-    return BREAD_MOUSE_BUTTON_MIDDLE;
-  case 0x113:
-    return BREAD_MOUSE_BUTTON_4;
-  case 0x114:
-    return BREAD_MOUSE_BUTTON_5;
-  default:
-    return BREAD_MOUSE_BUTTON_MAX;
-  }
-}
-
-bread_input_state_t bread_window_get_input(bread_window_t *window) {
-  bread_input_state_t empty = {0};
-  if (!window || !window->backend) {
-    bread_log_error("Missing values, can't get input state");
-    return empty;
-  }
-
-#if BREAD_WAYLAND
-  bread_log_debug("Getting input state for wayland");
-  wl_state_t *state = window->backend;
-  return state->input;
-#elif BREAD_X11
-  bread_log_debug("Getting input state for x11");
-  x11_state_t *state = window->backend;
-  return state->input;
-#endif
-}
-
-void bread_window_text_input_enable(bread_window_t *window, f32 x, f32 y, f32 w,
-                                    f32 h) {
-  if (!window || !window->backend)
-    return;
-#if BREAD_WAYLAND
-  wl_state_t *state = window->backend;
-  bread_wayland_text_input_enable(state, x, y, w, h);
-#elif BREAD_X11
-  x11_state_t *state = window->backend;
-  bread_x11_text_input_enable(state, x, y, w, h);
-#endif
-}
-
-void bread_window_text_input_disable(bread_window_t *window) {
-  if (!window || !window->backend)
-    return;
-#if BREAD_WAYLAND
-  wl_state_t *state = window->backend;
-  bread_wayland_text_input_disable(state);
-#elif BREAD_X11
-  x11_state_t *state = window->backend;
-  bread_x11_text_input_disable(state);
-#endif
-}
-
-void bread_window_text_input_set_surrounding(bread_window_t *window,
-                                             const cstr *text, u32 cursor,
-                                             u32 anchor) {
-  if (!window || !window->backend)
-    return;
-#if BREAD_WAYLAND
-  wl_state_t *state = window->backend;
-  bread_wayland_text_input_set_surrounding(state, text, cursor, anchor);
-#elif BREAD_X11
-  (void)text;
-  (void)cursor;
-  (void)anchor;
-#endif
-}
-
-u32 bread_window_get_mods(bread_window_t *window) {
+u32 bread_input_get_mods(bread_window_t *window) {
   if (!window || !window->backend)
     return 0;
 
@@ -306,6 +225,29 @@ u32 bread_window_get_mods(bread_window_t *window) {
                                    XKB_STATE_MODS_EFFECTIVE) > 0)
     mods |= BREAD_MOD_SUPER;
   return mods;
+}
+
+bread_key_t bread_evdev_to_key(u32 evdev_key) {
+  if (evdev_key < EVDEV_TO_BREAD_MAX)
+    return evdev_to_bread[evdev_key];
+  return BREAD_KEY_UNKNOWN;
+}
+
+bread_mouse_button_t bread_evdev_to_mouse_button(u32 button) {
+  switch (button) {
+  case 0x110:
+    return BREAD_MOUSE_BUTTON_LEFT;
+  case 0x111:
+    return BREAD_MOUSE_BUTTON_RIGHT;
+  case 0x112:
+    return BREAD_MOUSE_BUTTON_MIDDLE;
+  case 0x113:
+    return BREAD_MOUSE_BUTTON_4;
+  case 0x114:
+    return BREAD_MOUSE_BUTTON_5;
+  default:
+    return BREAD_MOUSE_BUTTON_MAX;
+  }
 }
 
 u32 bread_event_key_to_unicode(bread_window_t *window, bread_event_t *event) {

@@ -151,6 +151,27 @@ void bread_wayland_text_input_set_surrounding(wl_state_t *state,
 //
 
 /**
+ * @brief Retains and sends the content purpose and hints of the text input.
+ *
+ * @details A no-op when the pair is unchanged. The values are stored even while
+ * text input is disabled, so they are applied when it is next enabled.
+ *
+ * @param state The Wayland state.
+ * @param purpose The content purpose value.
+ * @param hints The content hint bitmask.
+ *
+ * @pre All parameters must be valid.
+ *
+ * @see bread_window_text_input_set_content_type
+ */
+void bread_wayland_text_input_set_content_type(wl_state_t *state, u32 purpose,
+                                               u32 hints);
+
+//
+//
+//
+
+/**
  * @brief Initializes the wayland cursor.
  *
  * @details Finds the cursor theme, cursor size, and loads them, then loads each

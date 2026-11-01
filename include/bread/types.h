@@ -305,6 +305,59 @@ typedef struct {
 //
 
 /**
+ * @brief What a text input is used for.
+ *
+ * @details Mirrors the Wayland text-input content purpose values, so an input
+ * method can pick a keyboard layout, suppress learning, or offer the right
+ * candidates. The X11 backend has no equivalent and ignores it.
+ */
+typedef enum {
+  BREAD_TEXT_PURPOSE_NORMAL,   /**< Free-form text. */
+  BREAD_TEXT_PURPOSE_ALPHA,    /**< Alphabetical text. */
+  BREAD_TEXT_PURPOSE_DIGITS,   /**< Digits only. */
+  BREAD_TEXT_PURPOSE_NUMBER,   /**< A number. */
+  BREAD_TEXT_PURPOSE_PHONE,    /**< A phone number. */
+  BREAD_TEXT_PURPOSE_URL,      /**< A URL. */
+  BREAD_TEXT_PURPOSE_EMAIL,    /**< An email address. */
+  BREAD_TEXT_PURPOSE_NAME,     /**< A person's name. */
+  BREAD_TEXT_PURPOSE_PASSWORD, /**< A password, must not be learned. */
+  BREAD_TEXT_PURPOSE_PIN,      /**< A numeric pin. */
+  BREAD_TEXT_PURPOSE_DATE,     /**< A date. */
+  BREAD_TEXT_PURPOSE_TIME,     /**< A time. */
+  BREAD_TEXT_PURPOSE_DATETIME, /**< A date and time. */
+  BREAD_TEXT_PURPOSE_TERMINAL, /**< A terminal command line. */
+} bread_text_purpose_t;
+
+//
+//
+//
+
+/**
+ * @brief Hints about a text input, as a bitmask.
+ *
+ * @details Mirrors the Wayland text-input content hint values. Combine them
+ * with `|`; `BREAD_TEXT_HINT_NONE` clears all of them. The X11 backend has no
+ * equivalent and ignores them.
+ */
+typedef enum {
+  BREAD_TEXT_HINT_NONE = 0,                  /**< No hints. */
+  BREAD_TEXT_HINT_COMPLETION = 0x1,          /**< Completion is useful. */
+  BREAD_TEXT_HINT_SPELLCHECK = 0x2,          /**< Spellchecking is useful. */
+  BREAD_TEXT_HINT_AUTO_CAPITALIZATION = 0x4, /**< Auto-capitalize. */
+  BREAD_TEXT_HINT_LOWERCASE = 0x8,           /**< Lowercase is expected. */
+  BREAD_TEXT_HINT_UPPERCASE = 0x10,          /**< Uppercase is expected. */
+  BREAD_TEXT_HINT_TITLECASE = 0x20,          /**< Title case is expected. */
+  BREAD_TEXT_HINT_HIDDEN_TEXT = 0x40,        /**< Characters are hidden. */
+  BREAD_TEXT_HINT_SENSITIVE_DATA = 0x80,     /**< Must not be learned. */
+  BREAD_TEXT_HINT_LATIN = 0x100,             /**< Latin layout is expected. */
+  BREAD_TEXT_HINT_MULTILINE = 0x200,         /**< Multiple lines are allowed. */
+} bread_text_hint_t;
+
+//
+//
+//
+
+/**
  * @brief The backend type of the bread build.
  *
  * @param BREAD_BACKEND_UNKNOWN The window is using an unknown backend, meaning

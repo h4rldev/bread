@@ -9,11 +9,13 @@
 
 #ifdef BREAD_WAYLAND
 #include <bread/wayland/wayland.h>
+#include <bread/wayland/wayland_input.h>
 extern const bread_backend_vtable_t bread_wayland_backend;
 #endif
 
 #ifdef BREAD_X11
 #include <bread/x11/x11.h>
+#include <bread/x11/x11_input.h>
 extern const bread_backend_vtable_t bread_x11_backend;
 #endif
 
@@ -197,6 +199,24 @@ bread_surface_t bread_window_get_surface(bread_window_t *window) {
   return backend_vtable->get_surface(window);
 }
 
+bread_input_state_t bread_window_get_input(bread_window_t *window) {
+  bread_input_state_t empty = {0};
+  if (!window || !window->backend) {
+    bread_log_error("Missing values, can't get input state");
+    return empty;
+  }
+
+#if BREAD_WAYLAND
+  bread_log_debug("Getting input state for wayland");
+  wl_state_t *state = window->backend;
+  return state->input;
+#elif BREAD_X11
+  bread_log_debug("Getting input state for x11");
+  x11_state_t *state = window->backend;
+  return state->input;
+#endif
+}
+
 f32 bread_window_get_scale(bread_window_t *window) {
   if (!window || !window->backend)
     return 1.0f;
@@ -237,4 +257,59 @@ const cstr *bread_clipboard_get(bread_window_t *window) {
   if (!vt || !vt->clipboard_get)
     return null;
   return vt->clipboard_get(window);
+}
+
+void bread_window_text_input_enable(bread_window_t *window, f32 x, f32 y, f32 w,
+                                    f32 h) {
+  if (!window || !window->backend)
+    return;
+#if BREAD_WAYLAND
+  wl_state_t *state = window->backend;
+  bread_wayland_text_input_enable(state, x, y, w, h);
+#elif BREAD_X11
+  x11_state_t *state = window->backend;
+  bread_x11_text_input_enable(state, x, y, w, h);
+#endif
+}
+
+void bread_window_text_input_disable(bread_window_t *window) {
+  if (!window || !window->backend)
+    return;
+#if BREAD_WAYLAND
+  wl_state_t *state = window->backend;
+  bread_wayland_text_input_disable(state);
+#elif BREAD_X11
+  x11_state_t *state = window->backend;
+  bread_x11_text_input_disable(state);
+#endif
+}
+
+void bread_window_text_input_set_surrounding(bread_window_t *window,
+                                             const cstr *text, u32 cursor,
+                                             u32 anchor) {
+  if (!window || !window->backend)
+    return;
+#if BREAD_WAYLAND
+  wl_state_t *state = window->backend;
+  bread_wayland_text_input_set_surrounding(state, text, cursor, anchor);
+#elif BREAD_X11
+  (void)text;
+  (void)cursor;
+  (void)anchor;
+#endif
+}
+
+void bread_window_text_input_set_content_type(bread_window_t *window,
+                                              bread_text_purpose_t purpose,
+                                              u32 hints) {
+  if (!window || !window->backend)
+    return;
+
+#if BREAD_WAYLAND
+  wl_state_t *state = window->backend;
+  bread_wayland_text_input_set_content_type(state, (u32)purpose, hints);
+#elif BREAD_X11
+  (void)purpose;
+  (void)hints;
+#endif
 }

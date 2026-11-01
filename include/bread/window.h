@@ -224,6 +224,79 @@ f32 bread_window_get_scale(bread_window_t *window);
 //
 
 /**
+ * @brief Gets the backend type of the bread build.
+ *
+ * @details Which can be either @ref BREAD_BACKEND_WAYLAND or @ref
+ * BREAD_BACKEND_X11.
+ *
+ * @return The backend type of the bread build.
+ */
+bread_backend_type_t bread_get_backend_type(void);
+
+//
+//
+//
+
+/**
+ * @brief Sets the window's clipboard text.
+ *
+ * @details Copies @c text into the backend's clipboard, taking ownership of the
+ * selection. Passing null or an empty string clears it.
+ *
+ * @param window The window to set the clipboard for.
+ * @param text The text to copy, or null to clear.
+ *
+ * @pre @c window must be a valid pointer and properly initialized through
+ * @ref bread_window_init().
+ */
+void bread_clipboard_set(bread_window_t *window, const cstr *text);
+
+//
+//
+//
+
+/**
+ * @brief Reads the window's clipboard text.
+ *
+ * @details Returns the text currently on the clipboard, owned by the window and
+ * valid until the next call or @ref bread_window_destroy(). While the window
+ * owns the selection its own copy is returned; otherwise it is fetched from the
+ * selection owner.
+ *
+ * @param window The window to read the clipboard for.
+ *
+ * @pre @c window must be a valid pointer and properly initialized through
+ * @ref bread_window_init().
+ *
+ * @return The clipboard text, or null when it is empty or unavailable.
+ */
+const cstr *bread_clipboard_get(bread_window_t *window);
+
+//
+//
+//
+
+/**
+ * @brief Get the current input state of the window.
+ *
+ * @details Usually used if you think getting inputs through BREAD_EVENT isn't
+ * good enough.
+ *
+ * @param window The window to get the input state for.
+ *
+ * @pre @c window must be a valid pointer and properly initialized through @ref
+ * bread_window_init(), and you must have polled the window through @ref
+ * bread_window_poll() at least once.
+ *
+ * @return The input state of the window.
+ */
+bread_input_state_t bread_window_get_input(bread_window_t *window);
+
+//
+//
+//
+
+/**
  * @brief Enables text input for the window.
  *
  * @details Enables text input for the window and anchors the IME candidate
@@ -301,52 +374,24 @@ void bread_window_text_input_set_surrounding(bread_window_t *window,
 //
 
 /**
- * @brief Gets the backend type of the bread build.
+ * @brief Sets the purpose and hints of the text input being edited.
  *
- * @details Which can be either @ref BREAD_BACKEND_WAYLAND or @ref
- * BREAD_BACKEND_X11.
+ * @details Tells the input method what kind of text is being edited, so it can
+ * choose a layout, avoid learning sensitive data, or disable suggestions. The
+ * values are retained and re-sent whenever text input is (re)enabled or the
+ * compositor acknowledges a stale state, so calling this per frame is free: an
+ * unchanged pair does nothing.
  *
- * @return The backend type of the bread build.
+ * @param window The window.
+ * @param purpose What the text is for, see @ref bread_text_purpose_t.
+ * @param hints A bitmask of @ref bread_text_hint_t values.
+ *
+ * @pre The window is valid.
+ *
+ * @see bread_window_text_input_enable
  */
-bread_backend_type_t bread_get_backend_type(void);
-
-//
-//
-//
-
-/**
- * @brief Sets the window's clipboard text.
- *
- * @details Copies @c text into the backend's clipboard, taking ownership of the
- * selection. Passing null or an empty string clears it.
- *
- * @param window The window to set the clipboard for.
- * @param text The text to copy, or null to clear.
- *
- * @pre @c window must be a valid pointer and properly initialized through
- * @ref bread_window_init().
- */
-void bread_clipboard_set(bread_window_t *window, const cstr *text);
-
-//
-//
-//
-
-/**
- * @brief Reads the window's clipboard text.
- *
- * @details Returns the text currently on the clipboard, owned by the window and
- * valid until the next call or @ref bread_window_destroy(). While the window
- * owns the selection its own copy is returned; otherwise it is fetched from the
- * selection owner.
- *
- * @param window The window to read the clipboard for.
- *
- * @pre @c window must be a valid pointer and properly initialized through
- * @ref bread_window_init().
- *
- * @return The clipboard text, or null when it is empty or unavailable.
- */
-const cstr *bread_clipboard_get(bread_window_t *window);
+void bread_window_text_input_set_content_type(bread_window_t *window,
+                                              bread_text_purpose_t purpose,
+                                              u32 hints);
 
 #endif // !BREAD_WINDOW_H
