@@ -843,7 +843,8 @@ void bread_x11_text_input_enable(x11_state_t *state, f32 x, f32 y, f32 w,
     return;
 
   xcb_xim_set_ic_focus(state->xim, state->xim_ic);
-  xcb_xim_ext_move(state->xim, state->xim_ic, (i16)x, (i16)y);
+  xcb_xim_ext_move(state->xim, state->xim_ic, (i16)(x * state->scale + 0.5f),
+                   (i16)(y * state->scale + 0.5f));
 }
 
 void bread_x11_text_input_disable(x11_state_t *state) {

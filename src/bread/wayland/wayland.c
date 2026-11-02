@@ -105,6 +105,9 @@ static void xdg_toplevel_configure(void *data, xdg_toplevel_t *toplevel,
     state->window->width = state->width;
     state->window->height = state->height;
 
+    if (state->viewport)
+      wp_viewport_set_destination(state->viewport, state->width, state->height);
+
     bread_event_t event = {0};
     event.type = BREAD_EVENT_WINDOW_RESIZE;
     event.data.resize.width = state->width;
@@ -133,15 +136,16 @@ static const xdg_toplevel_listener_t xdg_toplevel_listener = {
 //
 
 /**
- * @brief Applies the compositors preferred buffer scale.
+ * @brief Applies the compositor's preferred buffer scale.
  *
- * @details Stores the scale and sets it on the surface. Fires a resize event at
- * the unchanged logical size so the app re-renders at the new physical
- * resolution.
+ * @details Stores the integer scale and sets it on the surface, then fires a
+ * resize event at the unchanged logical size so the app re-renders at the new
+ * physical resolution. Ignored while fractional scaling is active, which keeps
+ * the buffer scale at 1 and maps the buffer through a viewport instead.
  *
  * @param data The @ref wl_state_t.
  * @param surface The surface whose buffer scale changed.
- * @param factor The prefered buffer scale (physical px per logical px).
+ * @param factor The preferred buffer scale (physical px per logical px).
  *
  * @pre @c data and @c surface must be valid.
  */
@@ -151,10 +155,13 @@ static void surface_preferred_buffer_scale(void *data, wl_surface_t *surface,
   if (factor < 1)
     factor = 1;
 
-  if (factor == state->output_scale)
+  if (state->fractional)
     return;
 
-  state->output_scale = factor;
+  if ((f32)factor == state->output_scale)
+    return;
+
+  state->output_scale = (f32)factor;
   wl_surface_set_buffer_scale(surface, factor);
 
   if (state->width == 0 || state->height == 0)
@@ -171,8 +178,128 @@ static void surface_preferred_buffer_scale(void *data, wl_surface_t *surface,
 //
 //
 
+/**
+ * @brief Applies the compositor's preferred fractional scale.
+ *
+ * @details Stores the scale and fires a resize event at the unchanged logical
+ * size so the app re-renders its buffer at the new physical resolution. The
+ * buffer scale stays 1; the surface's viewport maps the scaled buffer back to
+ * the logical size.
+ *
+ * @param data The @ref wl_state_t.
+ * @param fs The fractional scale object (unused).
+ * @param scale The preferred scale numerator (denominator 120).
+ *
+ * @pre @c data must be valid.
+ */
+static void fractional_scale_preferred_scale(void *data,
+                                             struct wp_fractional_scale_v1 *fs,
+                                             u32 scale) {
+  (void)fs;
+  wl_state_t *state = data;
+  f32 factor = scale > 0 ? (f32)scale / 120.0f : 1.0f;
+
+  if (factor == state->output_scale)
+    return;
+
+  state->output_scale = factor;
+
+  if (state->width == 0 || state->height == 0)
+    return;
+
+  bread_event_t event = {0};
+  event.type = BREAD_EVENT_WINDOW_RESIZE;
+  event.data.resize.width = state->width;
+  event.data.resize.height = state->height;
+  bread_fire_event(state->window, &event);
+}
+
+//
+//
+//
+
+static const struct wp_fractional_scale_v1_listener fractional_scale_listener =
+    {
+        .preferred_scale = fractional_scale_preferred_scale,
+};
+
+//
+//
+//
+
+/**
+ * @brief Handles a surface entering an output.
+ *
+ * @details No-op: bread does not track which outputs a surface is on.
+ *
+ * @param data The @ref wl_state_t.
+ * @param surface The surface that entered an output.
+ * @param output The output entered.
+ *
+ * @pre @c data and @c surface must be valid.
+ */
+static void surface_enter(void *data, wl_surface_t *surface,
+                          wl_output_t *output) {
+  (void)data;
+  (void)surface;
+  (void)output;
+}
+
+//
+//
+//
+
+/**
+ * @brief Handles a surface leaving an output.
+ *
+ * @details No-op: bread does not track which outputs a surface is on.
+ *
+ * @param data The @ref wl_state_t.
+ * @param surface The surface that left an output.
+ * @param output The output left.
+ *
+ * @pre @c data and @c surface must be valid.
+ */
+static void surface_leave(void *data, wl_surface_t *surface,
+                          wl_output_t *output) {
+  (void)data;
+  (void)surface;
+  (void)output;
+}
+
+//
+//
+//
+
+/**
+ * @brief Handles the compositor's preferred buffer transform.
+ *
+ * @details No-op: the compositor applies the transform itself when the client
+ * does not pre-rotate its buffer, so ignoring the preference is valid.
+ *
+ * @param data The @ref wl_state_t.
+ * @param surface The surface whose preferred transform changed.
+ * @param transform The preferred @c wl_output_transform value.
+ *
+ * @pre @c data and @c surface must be valid.
+ */
+static void surface_preferred_buffer_transform(void *data,
+                                               wl_surface_t *surface,
+                                               u32 transform) {
+  (void)data;
+  (void)surface;
+  (void)transform;
+}
+
+//
+//
+//
+
 static const wl_surface_listener_t wl_surface_listener = {
+    .enter = surface_enter,
+    .leave = surface_leave,
     .preferred_buffer_scale = surface_preferred_buffer_scale,
+    .preferred_buffer_transform = surface_preferred_buffer_transform,
 };
 
 //
@@ -257,6 +384,17 @@ static void global_registry_handler(void *data, wl_registry_t *registry, u32 id,
     bread_wayland_seat_bind(state, registry, id, version);
   }
 
+  else if (strcmp(interface, wp_fractional_scale_manager_v1_interface.name) ==
+           0) {
+    state->fractional_manager = wl_registry_bind(
+        registry, id, &wp_fractional_scale_manager_v1_interface, 1);
+  }
+
+  else if (strcmp(interface, wp_viewporter_interface.name) == 0) {
+    state->viewporter =
+        wl_registry_bind(registry, id, &wp_viewporter_interface, 1);
+  }
+
   else if (strcmp(interface, zwp_text_input_manager_v3_interface.name) == 0) {
     state->text_input_manager =
         wl_registry_bind(registry, id, &zwp_text_input_manager_v3_interface, 1);
@@ -321,6 +459,26 @@ static void wl_state_cleanup(wl_state_t *state) {
     bread_log_debug("Cleaning up seat");
     bread_wayland_seat_cleanup(state);
     state->seat = null;
+  }
+
+  if (state->viewport) {
+    wp_viewport_destroy(state->viewport);
+    state->viewport = null;
+  }
+
+  if (state->fractional) {
+    wp_fractional_scale_v1_destroy(state->fractional);
+    state->fractional = null;
+  }
+
+  if (state->viewporter) {
+    wp_viewporter_destroy(state->viewporter);
+    state->viewporter = null;
+  }
+
+  if (state->fractional_manager) {
+    wp_fractional_scale_manager_v1_destroy(state->fractional_manager);
+    state->fractional_manager = null;
   }
 
   if (state->text_input_manager) {
@@ -439,7 +597,7 @@ static void wayland_init(bread_window_t *window) {
   state->repeat_next = 0.0;
   state->repeat_raw_keycode = 0;
   state->window = window;
-  state->output_scale = 1;
+  state->output_scale = 1.0f;
 
   state->display = wl_display_connect(null);
   if (!state->display) {
@@ -482,6 +640,21 @@ static void wayland_init(bread_window_t *window) {
   }
 
   wl_surface_add_listener(state->wl_surface, &wl_surface_listener, state);
+
+  if (state->viewporter) {
+    state->viewport =
+        wp_viewporter_get_viewport(state->viewporter, state->wl_surface);
+    if (state->width > 0 && state->height > 0)
+      wp_viewport_set_destination(state->viewport, state->width, state->height);
+  }
+
+  if (state->fractional_manager && state->viewporter) {
+    wl_surface_set_buffer_scale(state->wl_surface, 1);
+    state->fractional = wp_fractional_scale_manager_v1_get_fractional_scale(
+        state->fractional_manager, state->wl_surface);
+    wp_fractional_scale_v1_add_listener(state->fractional,
+                                        &fractional_scale_listener, state);
+  }
 
   if (!state->xdg_wm_base) {
     bread_log_fatal("xdg_wm_base is null");

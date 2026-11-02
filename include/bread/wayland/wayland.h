@@ -12,7 +12,9 @@
 #include <wayland-cursor.h>
 #include <xkbcommon/xkbcommon.h>
 
+#include <wayland/fractional-scale-v1-client-protocol.h>
 #include <wayland/text-input-unstable-v3-client-protocol.h>
+#include <wayland/viewporter-client-protocol.h>
 #include <wayland/xdg-decoration-client-protocol.h>
 #include <wayland/xdg-shell-client-protocol.h>
 
@@ -44,6 +46,11 @@ typedef struct wl_data_device_listener wl_data_device_listener_t;
 
 typedef struct wl_surface wl_surface_t;
 typedef struct wl_surface_listener wl_surface_listener_t;
+
+typedef struct wp_fractional_scale_manager_v1 wp_fractional_scale_manager_v1_t;
+typedef struct wp_fractional_scale_v1 wp_fractional_scale_v1_t;
+typedef struct wp_viewporter wp_viewporter_t;
+typedef struct wp_viewport wp_viewport_t;
 
 typedef struct wl_buffer wl_buffer_t;
 typedef struct wl_registry wl_registry_t;
@@ -99,6 +106,12 @@ typedef struct {
   wl_shm_t *shm;               /**< The wl_shm pool allocator. */
   wl_surface_t *wl_surface;    /**< The window's wl_surface. */
 
+  wp_fractional_scale_manager_v1_t
+      *fractional_manager;              /**< Fractional scale manager. */
+  wp_fractional_scale_v1_t *fractional; /**< Surface fractional scale. */
+  wp_viewporter_t *viewporter;          /**< Viewporter global. */
+  wp_viewport_t *viewport;              /**< Surface viewport. */
+
   zwp_text_input_manager_v3_t *text_input_manager; /**< IME manager. */
   zwp_text_input_v3_t *text_input;                 /**< Seat text input. */
   b32 text_input_enabled; /**< Whether text input is enabled. */
@@ -140,7 +153,7 @@ typedef struct {
   u16 width;        /**< Current window width in logical pixels. */
   u16 height;       /**< Current window height in logical pixels. */
   u32 refresh_mhz;  /**< Current monitor refresh rate in millihertz. */
-  i32 output_scale; /**< Current output scale factor. */
+  f32 output_scale; /**< Current scale (fractional when the protocol allows). */
   b32 running;      /**< True while the window should keep running. */
 
   bread_input_state_t input; /**< Latest input snapshot (pointer/keys). */

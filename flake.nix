@@ -51,6 +51,10 @@
         wayland-scanner private-code ${pkgs.wayland-protocols}/share/wayland-protocols/unstable/xdg-decoration/xdg-decoration-unstable-v1.xml ./src/wayland/xdg-decoration-client-protocol.c
         wayland-scanner client-header ${pkgs.wayland-protocols}/share/wayland-protocols/unstable/text-input/text-input-unstable-v3.xml ./include/wayland/text-input-unstable-v3-client-protocol.h
         wayland-scanner private-code ${pkgs.wayland-protocols}/share/wayland-protocols/unstable/text-input/text-input-unstable-v3.xml ./src/wayland/text-input-unstable-v3-client-protocol.c
+        wayland-scanner client-header ${pkgs.wayland-protocols}/share/wayland-protocols/staging/fractional-scale/fractional-scale-v1.xml ./include/wayland/fractional-scale-v1-client-protocol.h
+        wayland-scanner private-code ${pkgs.wayland-protocols}/share/wayland-protocols/staging/fractional-scale/fractional-scale-v1.xml ./src/wayland/fractional-scale-v1-client-protocol.c
+        wayland-scanner client-header ${pkgs.wayland-protocols}/share/wayland-protocols/stable/viewporter/viewporter.xml ./include/wayland/viewporter-client-protocol.h
+        wayland-scanner private-code ${pkgs.wayland-protocols}/share/wayland-protocols/stable/viewporter/viewporter.xml ./src/wayland/viewporter-client-protocol.c
       '';
 
       mkBread = {
@@ -195,6 +199,10 @@
           [[ -f ./src/wayland/xdg-decoration-client-protocol.c ]] || wayland-scanner private-code ${pkgs.wayland-protocols}/share/wayland-protocols/unstable/xdg-decoration/xdg-decoration-unstable-v1.xml ./src/wayland/xdg-decoration-client-protocol.c
           [[ -f ./include/wayland/text-input-unstable-v3-client-protocol.h ]] || wayland-scanner client-header ${pkgs.wayland-protocols}/share/wayland-protocols/unstable/text-input/text-input-unstable-v3.xml ./include/wayland/text-input-unstable-v3-client-protocol.h
           [[ -f ./src/wayland/text-input-unstable-v3-client-protocol.c ]] || wayland-scanner private-code ${pkgs.wayland-protocols}/share/wayland-protocols/unstable/text-input/text-input-unstable-v3.xml ./src/wayland/text-input-unstable-v3-client-protocol.c
+          [[ -f ./include/wayland/fractional-scale-v1-client-protocol.h ]] || wayland-scanner client-header ${pkgs.wayland-protocols}/share/wayland-protocols/staging/fractional-scale/fractional-scale-v1.xml ./include/wayland/fractional-scale-v1-client-protocol.h
+          [[ -f ./src/wayland/fractional-scale-v1-client-protocol.c ]] || wayland-scanner private-code ${pkgs.wayland-protocols}/share/wayland-protocols/staging/fractional-scale/fractional-scale-v1.xml ./src/wayland/fractional-scale-v1-client-protocol.c
+          [[ -f ./include/wayland/viewporter-client-protocol.h ]] || wayland-scanner client-header ${pkgs.wayland-protocols}/share/wayland-protocols/stable/viewporter/viewporter.xml ./include/wayland/viewporter-client-protocol.h
+          [[ -f ./src/wayland/viewporter-client-protocol.c ]] || wayland-scanner private-code ${pkgs.wayland-protocols}/share/wayland-protocols/stable/viewporter/viewporter.xml ./src/wayland/viewporter-client-protocol.c
         '';
       };
     });

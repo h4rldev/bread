@@ -56,6 +56,51 @@ static xcb_atom_t intern_atom(xcb_connection_t *conn, const cstr *name) {
 //
 
 /**
+ * @brief Reads the Xft.dpi scale from the root resource manager.
+ *
+ * @details Parses @c Xft.dpi out of the root window's @c RESOURCE_MANAGER
+ * property. A missing or malformed value yields 1.0.
+ *
+ * @param state The X11 state, connected and with a screen.
+ *
+ * @return The scale in drawable pixels per logical pixel (1.0 when unset).
+ *
+ * @pre @c state must be connected and have a screen.
+ */
+static f32 x11_read_scale(x11_state_t *state) {
+  f32 scale = 1.0f;
+  xcb_get_property_cookie_t cookie = xcb_get_property(
+      state->connection, 0, state->screen->root, XCB_ATOM_RESOURCE_MANAGER,
+      XCB_ATOM_STRING, 0, 0xFFFFFFFFu);
+  xcb_get_property_reply_t *reply =
+      xcb_get_property_reply(state->connection, cookie, null);
+  if (!reply)
+    return scale;
+
+  int len = xcb_get_property_value_length(reply);
+  if (len > 0) {
+    char *rm = malloc((size_t)len + 1);
+    if (rm) {
+      memcpy(rm, xcb_get_property_value(reply), (size_t)len);
+      rm[len] = '\0';
+      char *dpi_str = strstr(rm, "Xft.dpi:");
+      if (dpi_str) {
+        int dpi = (int)strtol(dpi_str + 8, null, 10);
+        if (dpi > 0)
+          scale = (f32)dpi / 96.0f;
+      }
+      free(rm);
+    }
+  }
+  free(reply);
+  return scale;
+}
+
+//
+//
+//
+
+/**
  * @brief Cleans up the X11 state.
  *
  * @details Destroys the window if it exists, and disconnects the xcb connection
@@ -174,30 +219,11 @@ static void x11_init(bread_window_t *window) {
     return;
   }
 
-  state->scale = 1.0f;
-  xcb_get_property_cookie_t rm_cookie = xcb_get_property(
-      state->connection, 0, state->screen->root, XCB_ATOM_RESOURCE_MANAGER,
-      XCB_ATOM_STRING, 0, 0xFFFFFFFFu);
-  xcb_get_property_reply_t *rm_reply =
-      xcb_get_property_reply(state->connection, rm_cookie, null);
-  if (rm_reply) {
-    int rm_len = xcb_get_property_value_length(rm_reply);
-    if (rm_len > 0) {
-      char *rm = malloc((size_t)rm_len + 1);
-      if (rm) {
-        memcpy(rm, xcb_get_property_value(rm_reply), (size_t)rm_len);
-        rm[rm_len] = '\0';
-        char *dpi_str = strstr(rm, "Xft.dpi:");
-        if (dpi_str) {
-          int dpi = (int)strtol(dpi_str + 8, null, 10);
-          if (dpi > 0)
-            state->scale = (f32)dpi / 96.0f;
-        }
-        free(rm);
-      }
-    }
-    free(rm_reply);
-  }
+  state->scale = x11_read_scale(state);
+
+  u32 root_mask = XCB_EVENT_MASK_PROPERTY_CHANGE;
+  xcb_change_window_attributes(state->connection, state->screen->root,
+                               XCB_CW_EVENT_MASK, &root_mask);
 
   state->width = window->width;
   state->height = window->height;
@@ -298,6 +324,65 @@ static void x11_init(bread_window_t *window) {
 //
 
 /**
+ * @brief Sets the minimum size of the window.
+ *
+ * @details Reads the window manager's normal hints, replaces the minimum-size
+ * hint with @p width and @p height scaled to device pixels, and writes the
+ * hints back. The stored logical minimum size on the window is updated too.
+ *
+ * @param window The window to set the minimum size of.
+ * @param width The minimum width in logical pixels.
+ * @param height The minimum height in logical pixels.
+ *
+ * @pre @c window must be valid and created by @ref bread_window_init().
+ */
+static void x11_set_min_size(bread_window_t *window, u16 width, u16 height) {
+  if (!window || !window->backend) {
+    bread_log_error("Missing values, can't set min size");
+    return;
+  }
+
+  x11_state_t *state = window->backend;
+  if (!state->connection) {
+    bread_log_error("No X11 connection, can't set min size");
+    return;
+  }
+
+  if (width == 0 && height == 0)
+    return;
+
+  xcb_get_property_cookie_t cookie =
+      xcb_icccm_get_wm_normal_hints(state->connection, state->xcb_window);
+
+  xcb_size_hints_t hints = {0};
+  uint8_t got = xcb_icccm_get_wm_normal_hints_reply(state->connection, cookie,
+                                                    &hints, null);
+
+  if (got)
+    hints.flags &= ~XCB_ICCCM_SIZE_HINT_P_MIN_SIZE;
+  else
+    hints.flags = 0;
+
+  if (width > 0 || height > 0) {
+    hints.flags |= XCB_ICCCM_SIZE_HINT_P_MIN_SIZE;
+    if (width > 0)
+      hints.min_width = (u16)((f32)width * state->scale + 0.5f);
+    if (height > 0)
+      hints.min_height = (u16)((f32)height * state->scale + 0.5f);
+  }
+
+  window->min_width = width;
+  window->min_height = height;
+
+  xcb_icccm_set_wm_normal_hints(state->connection, state->xcb_window, &hints);
+  xcb_flush(state->connection);
+}
+
+//
+//
+//
+
+/**
  * @brief Polls for events on the X11 window.
  *
  * @details Polls for events on the X11 window, and fires events for each XCB
@@ -375,6 +460,34 @@ static void x11_poll_events(bread_window_t *window) {
         ev.data.resize.height = logical_height;
         bread_fire_event(state->window, &ev);
       }
+    } break;
+
+    case XCB_PROPERTY_NOTIFY: {
+      xcb_property_notify_event_t *prop = (xcb_property_notify_event_t *)event;
+      if (prop->window != state->screen->root ||
+          prop->atom != XCB_ATOM_RESOURCE_MANAGER)
+        break;
+
+      f32 scale = x11_read_scale(state);
+      if (scale == state->scale)
+        break;
+
+      state->scale = scale;
+
+      u32 size[2] = {(u32)((f32)state->width * scale + 0.5f),
+                     (u32)((f32)state->height * scale + 0.5f)};
+      xcb_configure_window(state->connection, state->xcb_window,
+                           XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT,
+                           size);
+
+      x11_set_min_size(state->window, state->window->min_width,
+                       state->window->min_height);
+
+      bread_event_t ev = {0};
+      ev.type = BREAD_EVENT_WINDOW_RESIZE;
+      ev.data.resize.width = state->width;
+      ev.data.resize.height = state->height;
+      bread_fire_event(state->window, &ev);
     } break;
 
     case XCB_KEY_PRESS: {
@@ -686,68 +799,6 @@ static const cstr *x11_clipboard_get(bread_window_t *window) {
 
   return bread_x11_clipboard_get(window->backend);
 }
-
-/**
- * @brief Set the minimum size of the window.
- *
- * @details Gets the wm normal hints, and applies the new minimum size.
- * If the window is not resizable, this function does nothing, and if the
- * minimum size is already set to the measurements passed, this function does
- * nothing.
- *
- * @param window The window to set the minimum size of.
- * @param width The minimum width of the window.
- * @param height The minimum height of the window.
- *
- * @pre @c window must be valid and created by @ref bread_window_init().
- */
-static void x11_set_min_size(bread_window_t *window, u16 width, u16 height) {
-  if (!window || !window->backend) {
-    bread_log_error("Missing values, can't set min size");
-    return;
-  }
-
-  x11_state_t *state = window->backend;
-  if (!state->connection) {
-    bread_log_error("No X11 connection, can't set min size");
-    return;
-  }
-
-  if ((width == window->min_width && height == window->min_height) ||
-      (width == 0 && height == 0))
-    return;
-
-  xcb_get_property_cookie_t cookie =
-      xcb_icccm_get_wm_normal_hints(state->connection, state->xcb_window);
-
-  xcb_size_hints_t hints = {0};
-  uint8_t got = xcb_icccm_get_wm_normal_hints_reply(state->connection, cookie,
-                                                    &hints, null);
-
-  if (got) {
-    hints.flags &= ~XCB_ICCCM_SIZE_HINT_P_MIN_SIZE;
-  } else {
-    hints.flags = 0;
-  }
-
-  if (width > 0 || height > 0) {
-    hints.flags |= XCB_ICCCM_SIZE_HINT_P_MIN_SIZE;
-    if (width > 0)
-      hints.min_width = (u16)((f32)width * state->scale + 0.5f);
-    if (height > 0)
-      hints.min_height = (u16)((f32)height * state->scale + 0.5f);
-  }
-
-  window->min_width = width;
-  window->min_height = height;
-
-  xcb_icccm_set_wm_normal_hints(state->connection, state->xcb_window, &hints);
-  xcb_flush(state->connection);
-}
-
-//
-//
-//
 
 /**
  * @brief Get the X11 backend.
