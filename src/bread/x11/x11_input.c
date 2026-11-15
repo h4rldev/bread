@@ -674,10 +674,11 @@ void bread_x11_cursor_init(x11_state_t *state) {
     return;
   }
 
-  static const char *cursor_names[] = {
+  static const cstr *cursor_names[] = {
       [BREAD_CURSOR_DEFAULT] = "default",
       [BREAD_CURSOR_POINTER] = "pointer",
-      [BREAD_CURSOR_HAND] = "grabbing",
+      [BREAD_CURSOR_HAND] = "hand2",
+      [BREAD_CURSOR_GRABBING] = "grabbing",
       [BREAD_CURSOR_TEXT] = "text",
       [BREAD_CURSOR_MOVE] = "move",
       [BREAD_CURSOR_RESIZE_EW] = "ew-resize",
@@ -691,7 +692,8 @@ void bread_x11_cursor_init(x11_state_t *state) {
   static const char *cursor_fallbacks[] = {
       [BREAD_CURSOR_DEFAULT] = "left_ptr",
       [BREAD_CURSOR_POINTER] = "hand1",
-      [BREAD_CURSOR_HAND] = "hand2",
+      [BREAD_CURSOR_HAND] = "pointer",
+      [BREAD_CURSOR_GRABBING] = "hand2",
       [BREAD_CURSOR_TEXT] = "xterm",
       [BREAD_CURSOR_MOVE] = "fleur",
       [BREAD_CURSOR_RESIZE_EW] = "sb_h_double_arrow",

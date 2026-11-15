@@ -217,6 +217,8 @@ typedef enum bread_cursor_type {
   BREAD_CURSOR_DEFAULT = 0, /**< The default cursor (pointer). */
   BREAD_CURSOR_POINTER,     /**< The pointer cursor (default). */
   BREAD_CURSOR_HAND,        /**< The hand cursor. */
+  BREAD_CURSOR_GRABBING,    /**< The closed hand, for holding something that is
+                             * being dragged. */
   BREAD_CURSOR_TEXT,        /**< The text cursor. */
   BREAD_CURSOR_MOVE,        /**< The move cursor. */
   BREAD_CURSOR_RESIZE_EW,   /**< The horizontal resize cursor (east-west). */
