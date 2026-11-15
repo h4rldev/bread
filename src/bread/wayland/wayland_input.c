@@ -149,6 +149,7 @@ static void keyboard_enter(void *data, wl_keyboard_t *keyboard, u32 serial,
                            wl_surface_t *surface, wl_array_t *keys) {
   wl_state_t *state = (wl_state_t *)data;
   state->input_serial = serial;
+  state->focused = true;
 }
 
 //
@@ -173,6 +174,7 @@ static void keyboard_leave(void *data, wl_keyboard_t *keyboard, u32 serial,
   wl_state_t *state = data;
   memset(state->input.keys, 0, sizeof(state->input.keys));
   state->repeat_key = BREAD_KEY_MAX;
+  state->focused = false;
 }
 
 //

@@ -155,6 +155,7 @@ typedef struct {
   u32 refresh_mhz;  /**< Current monitor refresh rate in millihertz. */
   f32 output_scale; /**< Current scale (fractional when the protocol allows). */
   b32 running;      /**< True while the window should keep running. */
+  b32 focused;      /**< True while the window holds keyboard focus. */
 
   bread_input_state_t input; /**< Latest input snapshot (pointer/keys). */
 

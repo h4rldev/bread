@@ -224,6 +224,22 @@ f32 bread_window_get_scale(bread_window_t *window);
 //
 
 /**
+ * @brief Whether the window currently holds keyboard focus.
+ * @details Tracks the backend's focus events: Wayland keyboard enter/leave and
+ * X11 FocusIn/FocusOut. A window that was never focused reports `false` until
+ * the first event, except that a freshly created window starts `true` so its
+ * first frame can map the surface.
+ *
+ * @param window The window to query.
+ * @return `true` while the window has keyboard focus.
+ */
+b32 bread_window_has_focus(bread_window_t *window);
+
+//
+//
+//
+
+/**
  * @brief Gets the backend type of the bread build.
  *
  * @details Which can be either @ref BREAD_BACKEND_WAYLAND or @ref

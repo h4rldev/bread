@@ -317,6 +317,7 @@ static void x11_init(bread_window_t *window) {
 
   bread_log_debug("Setting running to true");
   state->running = true;
+  state->focused = true;
 }
 
 //
@@ -579,10 +580,12 @@ static void x11_poll_events(bread_window_t *window) {
 
     case XCB_FOCUS_IN:
       bread_x11_ime_focus(state, true);
+      state->focused = true;
       break;
 
     case XCB_FOCUS_OUT:
       bread_x11_ime_focus(state, false);
+      state->focused = false;
       break;
 
     default:

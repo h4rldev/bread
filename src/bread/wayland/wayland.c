@@ -719,6 +719,7 @@ static void wayland_init(bread_window_t *window) {
 
   bread_log_debug("Setting running to true");
   state->running = true;
+  state->focused = true;
   bread_log_debug("Setting window backend");
   window->backend = state;
   return;

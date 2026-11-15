@@ -39,6 +39,7 @@ typedef struct {
   f32 scale;       /**< Drawable pixels per logical pixel (Xft.dpi / 96). */
   u32 refresh_mhz; /**< Current monitor refresh rate in millihertz. */
   b32 running;     /**< True while the window should keep running. */
+  b32 focused;     /**< True while the window holds keyboard focus. */
 
   xcb_atom_t wm_protocols;     /**< Cached WM_PROTOCOLS atom. */
   xcb_atom_t wm_delete_window; /**< Cached WM_DELETE_WINDOW atom. */

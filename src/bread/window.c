@@ -230,6 +230,18 @@ f32 bread_window_get_scale(bread_window_t *window) {
 #endif
 }
 
+b32 bread_window_has_focus(bread_window_t *window) {
+  if (!window || !window->backend)
+    return false;
+#if BREAD_WAYLAND
+  wl_state_t *state = window->backend;
+  return state->focused;
+#elif BREAD_X11
+  x11_state_t *state = window->backend;
+  return state->focused;
+#endif
+}
+
 bread_backend_type_t bread_get_backend_type(void) {
   bread_log_debug("Getting backend type");
 
