@@ -309,7 +309,11 @@ static const wl_surface_listener_t wl_surface_listener = {
 /**
  * @brief Configure the surface.
  *
- * @details Acks the configure, and updates the surface.
+ * @details Acks the configure. The pending size and viewport destination are
+ * not applied from here: a commit issued in this callback carries no buffer, so
+ * the compositor would scale the buffer already on screen into the new
+ * geometry for one frame. Both ride the next buffer attach and commit, which
+ * the renderer issues atomically.
  *
  * @param data The data pointer.
  * @param surface The surface.
@@ -327,7 +331,6 @@ static void xdg_surface_configure(void *data, xdg_surface_t *surface,
   }
 
   xdg_surface_ack_configure(surface, serial);
-  wl_surface_commit(state->wl_surface);
 }
 
 //
